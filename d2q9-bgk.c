@@ -55,6 +55,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <mpi.h>
 
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
@@ -135,6 +136,13 @@ int main(int argc, char* argv[])
   double tic, toc;              /* floating point numbers to calculate elapsed wallclock time */
   double usrtim;                /* floating point number to record elapsed user CPU time */
   double systim;                /* floating point number to record elapsed system CPU time */
+  int rank;                     /* 'rank' of process among it's cohort */
+  int size;                     /* size of cohort, i.e. num processes started */
+  int flag;                     /* for checking whether MPI_Init() has been called */
+  int strlen;                   /* length of a character array */
+  enum bool {FALSE,TRUE};       /* enumerated type: false = 0, true = 1 */
+  char hostname[MPI_MAX_PROCESSOR_NAME];  /* character array to hold hostname running process */
+
 
   /* parse the command line */
   if (argc != 3)
@@ -146,6 +154,24 @@ int main(int argc, char* argv[])
     paramfile = argv[1];
     obstaclefile = argv[2];
   }
+
+  MPI_Init( &argc, &argv );
+
+  MPI_Initialized(&flag);
+  if ( flag != TRUE ) {
+    MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+  }
+
+  /* determine the hostname */
+  MPI_Get_processor_name(hostname,&strlen);
+
+  MPI_Comm_size( MPI_COMM_WORLD, &size );
+  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
+  printf("Hello, world; from host %s: process %d of %d\n", hostname, rank, size);
+
+  /* finialise the MPI enviroment */
+  MPI_Finalize();
 
   /* initialise our data structures and load values from file */
   initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
