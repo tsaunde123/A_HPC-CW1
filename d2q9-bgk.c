@@ -60,6 +60,7 @@
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
 #define AVVELSFILE      "av_vels.dat"
+#define MASTER          0
 
 /* struct to hold the parameter values */
 typedef struct
@@ -87,6 +88,8 @@ typedef struct
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
                int** obstacles_ptr, float** av_vels_ptr);
+
+int calc_ncols_from_rank(int rank, int size, t_param params);
 
 /*
 ** The main calculation methods.
@@ -138,11 +141,13 @@ int main(int argc, char* argv[])
   double systim;                /* floating point number to record elapsed system CPU time */
   int rank;                     /* 'rank' of process among it's cohort */
   int size;                     /* size of cohort, i.e. num processes started */
-  int flag;                     /* for checking whether MPI_Init() has been called */
-  int strlen;                   /* length of a character array */
-  enum bool {FALSE,TRUE};       /* enumerated type: false = 0, true = 1 */
-  char hostname[MPI_MAX_PROCESSOR_NAME];  /* character array to hold hostname running process */
-
+  MPI_Status status;     /* struct used by MPI_Recv */
+  int local_nrows;       /* number of rows apportioned to this rank */
+  int local_ncols;       /* number of columns apportioned to this rank */
+  int remote_ncols;      /* number of columns apportioned to a remote rank */
+  double *sendbuf;       /* buffer to hold values to send */
+  double *recvbuf;       /* buffer to hold received values */
+  double *printbuf;      /* buffer to hold values for printing */
 
   /* parse the command line */
   if (argc != 3)
@@ -155,26 +160,13 @@ int main(int argc, char* argv[])
     obstaclefile = argv[2];
   }
 
+  /* initialise our data structures and load values from file */
+  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+
   MPI_Init( &argc, &argv );
-
-  MPI_Initialized(&flag);
-  if ( flag != TRUE ) {
-    MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-  }
-
-  /* determine the hostname */
-  MPI_Get_processor_name(hostname,&strlen);
 
   MPI_Comm_size( MPI_COMM_WORLD, &size );
   MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-
-  printf("Hello, world; from host %s: process %d of %d\n", hostname, rank, size);
-
-  /* finialise the MPI enviroment */
-  MPI_Finalize();
-
-  /* initialise our data structures and load values from file */
-  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -182,7 +174,7 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles);
+    timestep(params, cells, tmp_cells, obstacles, size, rank);
     av_vels[tt] = av_velocity(params, cells, obstacles);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -199,6 +191,9 @@ int main(int argc, char* argv[])
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
+  /* finialise the MPI enviroment */
+  MPI_Finalize();
+
   /* write final values and free memory */
   printf("==done==\n");
   printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, cells, obstacles));
@@ -211,10 +206,11 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles,
+  int* size, int* rank)
 {
   accelerate_flow(params, cells, obstacles);
-  propagate(params, cells, tmp_cells);
+  propagate(params, cells, tmp_cells, rank, size);
   rebound(params, cells, tmp_cells, obstacles);
   collision(params, cells, tmp_cells, obstacles);
   return EXIT_SUCCESS;
@@ -252,31 +248,90 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
   return EXIT_SUCCESS;
 }
 
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
+int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int* rank, int* size)
 {
+  int left = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
+  int right = (rank + 1) % size;
+  int local_nrows = params->ny;
+  int local_ncols = calc_ncols_from_rank(rank, size, params->nx);
+  int tag = 0;
+  MPI_Status status;
+
+  sendbuf = (double*)malloc(sizeof(double) * local_nrows);
+  recvbuf = (double*)malloc(sizeof(double) * local_nrows);
+  /* The last rank has the most columns apportioned.
+     printbuf must be big enough to hold this number */
+  remote_ncols = calc_ncols_from_rank(size-1, size, params->nx);
+  printbuf = (double*)malloc(sizeof(double) * (remote_ncols + 2));
+
+  t_speed* halo_cells = (double*)malloc(sizeof(double) * local_nrows * (local_ncols + 2);
+  int halo_local_nrows = local_nrows;
+  int halo_local_ncols = local_ncols + 2;
+
+  for(int jj = 0; jj < local_nrows; jj++){ //copy cells into local cells of halo_cells
+    for(int ii = 0; ii < halo_local_ncols-1; ii++){
+      halo_cells[(ii+1) + jj*halo_local_ncols] = cells[ii + jj*local_ncols];
+      halo_cells[(ii+1) + jj*halo_local_ncols].speeds = cells[ii + jj*local_ncols].speeds;
+    }
+  }
+
+  //Send left, receive right
+  for(int jj = 0; jj < halo_local_nrows; jj++){
+    sendbuf[jj] = halo_cells[jj*halo_local_ncols + 1];
+  }
+  MPI_Sendrecv(sendbuf, halo_local_nrows, MPI_DOUBLE, left, tag,
+		 recvbuf, halo_local_nrows, MPI_DOUBLE, right, tag,
+		 MPI_COMM_WORLD, &status);
+  for(int jj = 0; jj < halo_local_nrows; jj++){
+    halo_cells[jj*halo_local_ncols + (local_ncols+1)] = recvbuf[jj];
+  }
+  //Send right, receive left
+  for(int jj = 0; jj < halo_local_nrows; jj++){
+    sendbuf[jj] = halo_cells[jj*halo_local_ncols + local_ncols];
+  }
+  MPI_Sendrecv(sendbuf, halo_local_nrows, MPI_DOUBLE, right, tag,
+		 recvbuf, halo_local_nrows, MPI_DOUBLE, left, tag,
+		 MPI_COMM_WORLD, &status);
+  for(int jj = 0; jj < halo_local_nrows; jj++){
+    halo_cells[jj*halo_local_ncols] = recvbuf[jj];
+  }
+
+
+
   /* loop over _all_ cells */
-  for (int jj = 0; jj < params.ny; jj++)
+  for (int jj = 0; jj < local_nrows.ny; jj++)
   {
-    for (int ii = 0; ii < params.nx; ii++)
+    for (int ii = 0; ii < local_ncols.nx; ii++)
     {
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
-      int y_n = (jj + 1) % params.ny;
-      int x_e = (ii + 1) % params.nx;
-      int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
-      int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
+      int y_n = (jj + 1) % local_nrows;
+      int x_e = (ii + 1) % local_ncols;
+      int y_s = (jj == 0) ? (jj + local_nrows - 1) : (jj - 1);
+      int x_w = (ii == 0) ? (ii + local_ncols - 1) : (ii - 1);
+
+      tmp_cells[ii + jj*local_ncols].speeds[0] = halo_cells[ii + jj*local_ncols].speeds[0]; /* central cell, no movement */
+      tmp_cells[ii + jj*local_ncols].speeds[1] = halo_cells[x_w + jj*local_ncols].speeds[1]; /* east */
+      tmp_cells[ii + jj*local_ncols].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+      tmp_cells[ii + jj*local_ncols].speeds[3] = halo_cells[x_e + jj*local_ncols].speeds[3]; /* west */
+      tmp_cells[ii + jj*local_ncols].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
+      tmp_cells[ii + jj*local_ncols].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+      tmp_cells[ii + jj*local_ncols].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+      tmp_cells[ii + jj*local_ncols].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+      tmp_cells[ii + jj*local_ncols].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+
       /* propagate densities from neighbouring cells, following
       ** appropriate directions of travel and writing into
       ** scratch space grid */
-      tmp_cells[ii + jj*params.nx].speeds[0] = cells[ii + jj*params.nx].speeds[0]; /* central cell, no movement */
-      tmp_cells[ii + jj*params.nx].speeds[1] = cells[x_w + jj*params.nx].speeds[1]; /* east */
-      tmp_cells[ii + jj*params.nx].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; /* north */
-      tmp_cells[ii + jj*params.nx].speeds[3] = cells[x_e + jj*params.nx].speeds[3]; /* west */
-      tmp_cells[ii + jj*params.nx].speeds[4] = cells[ii + y_n*params.nx].speeds[4]; /* south */
-      tmp_cells[ii + jj*params.nx].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; /* north-east */
-      tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
-      tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
-      tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
+      // tmp_cells[ii + jj*params.nx].speeds[0] = cells[ii + jj*params.nx].speeds[0]; /* central cell, no movement */
+      // tmp_cells[ii + jj*params.nx].speeds[1] = cells[x_w + jj*params.nx].speeds[1]; /* east */
+      // tmp_cells[ii + jj*params.nx].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; /* north */
+      // tmp_cells[ii + jj*params.nx].speeds[3] = cells[x_e + jj*params.nx].speeds[3]; /* west */
+      // tmp_cells[ii + jj*params.nx].speeds[4] = cells[ii + y_n*params.nx].speeds[4]; /* south */
+      // tmp_cells[ii + jj*params.nx].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; /* north-east */
+      // tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
+      // tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
+      // tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
     }
   }
 
@@ -617,6 +672,19 @@ int initialise(const char* paramfile, const char* obstaclefile,
   *av_vels_ptr = (float*)malloc(sizeof(float) * params->maxIters);
 
   return EXIT_SUCCESS;
+}
+
+int calc_ncols_from_rank(int rank, int size, t_param params)
+{
+  int ncols;
+
+  ncols = params->nx / size;       /* integer division */
+  if ((params->nx % size) != 0) {  /* if there is a remainder */
+    if (rank == size - 1)
+      ncols += params->nx % size;  /* add remainder to last rank */
+  }
+
+  return ncols;
 }
 
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
