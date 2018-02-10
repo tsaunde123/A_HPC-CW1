@@ -89,16 +89,17 @@ int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
                int** obstacles_ptr, float** av_vels_ptr);
 
-int calc_ncols_from_rank(int rank, int size, t_param params);
+int calc_ncols_from_rank(int rank, int size, int width);
 
 /*
 ** The main calculation methods.
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int size,
+ int rank);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles);
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
+int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank, int size);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
@@ -207,7 +208,7 @@ int main(int argc, char* argv[])
 }
 
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles,
-  int* size, int* rank)
+  int size, int rank)
 {
   accelerate_flow(params, cells, obstacles);
   propagate(params, cells, tmp_cells, rank, size);
@@ -248,30 +249,30 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
   return EXIT_SUCCESS;
 }
 
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int* rank, int* size)
+int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank, int size)
 {
   int left = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
   int right = (rank + 1) % size;
-  int local_nrows = params->ny;
-  int local_ncols = calc_ncols_from_rank(rank, size, params->nx);
+  int local_nrows = params.ny;
+  int local_ncols = calc_ncols_from_rank(rank, size, params.nx);
   int tag = 0;
   MPI_Status status;
 
-  sendbuf = (double*)malloc(sizeof(double) * local_nrows);
-  recvbuf = (double*)malloc(sizeof(double) * local_nrows);
+  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows);
+  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows);
   /* The last rank has the most columns apportioned.
      printbuf must be big enough to hold this number */
-  remote_ncols = calc_ncols_from_rank(size-1, size, params->nx);
-  printbuf = (double*)malloc(sizeof(double) * (remote_ncols + 2));
+  int remote_ncols = calc_ncols_from_rank(size-1, size, params.nx);
+  t_speed* printbuf = (t_speed*)malloc(sizeof(t_speed) * (remote_ncols + 2));
 
-  t_speed* halo_cells = (double*)malloc(sizeof(double) * local_nrows * (local_ncols + 2);
+  t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * local_nrows * (local_ncols + 2));
   int halo_local_nrows = local_nrows;
   int halo_local_ncols = local_ncols + 2;
 
   for(int jj = 0; jj < local_nrows; jj++){ //copy cells into local cells of halo_cells
     for(int ii = 0; ii < halo_local_ncols-1; ii++){
       halo_cells[(ii+1) + jj*halo_local_ncols] = cells[ii + jj*local_ncols];
-      halo_cells[(ii+1) + jj*halo_local_ncols].speeds = cells[ii + jj*local_ncols].speeds;
+      //halo_cells[(ii+1) + jj*halo_local_ncols].speeds = cells[ii + jj*local_ncols].speeds;
     }
   }
 
@@ -299,9 +300,9 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int* ran
 
 
   /* loop over _all_ cells */
-  for (int jj = 0; jj < local_nrows.ny; jj++)
+  for (int jj = 0; jj < local_nrows; jj++)
   {
-    for (int ii = 0; ii < local_ncols.nx; ii++)
+    for (int ii = 0; ii < local_ncols; ii++)
     {
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
@@ -674,14 +675,14 @@ int initialise(const char* paramfile, const char* obstaclefile,
   return EXIT_SUCCESS;
 }
 
-int calc_ncols_from_rank(int rank, int size, t_param params)
+int calc_ncols_from_rank(int rank, int size, int width)
 {
   int ncols;
 
-  ncols = params->nx / size;       /* integer division */
-  if ((params->nx % size) != 0) {  /* if there is a remainder */
+  ncols = width / size;       /* integer division */
+  if ((width % size) != 0) {  /* if there is a remainder */
     if (rank == size - 1)
-      ncols += params->nx % size;  /* add remainder to last rank */
+      ncols += width % size;  /* add remainder to last rank */
   }
 
   return ncols;
