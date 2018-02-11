@@ -155,23 +155,23 @@ int main(int argc, char* argv[])
     obstaclefile = argv[2];
   }
 
-  MPI_Init( &argc, &argv );
+  //MPI_Init( &argc, &argv );
 
-  MPI_Initialized(&flag);
-  if ( flag != TRUE ) {
-    MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-  }
+  //MPI_Initialized(&flag);
+  //if ( flag != TRUE ) {
+  //  MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+ // }
 
   /* determine the hostname */
-  MPI_Get_processor_name(hostname,&strlen);
+  //MPI_Get_processor_name(hostname,&strlen);
 
-  MPI_Comm_size( MPI_COMM_WORLD, &size );
-  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+  //MPI_Comm_size( MPI_COMM_WORLD, &size );
+  //MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-  printf("Hello, world; from host %s: process %d of %d\n", hostname, rank, size);
+  //printf("Hello, world; from host %s: process %d of %d\n", hostname, rank, size);
 
   /* finialise the MPI enviroment */
-  MPI_Finalize();
+  //MPI_Finalize();
 
   /* initialise our data structures and load values from file */
   initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
