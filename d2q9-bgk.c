@@ -270,11 +270,14 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank
   int halo_local_ncols = local_ncols + 2;
 
   for(int jj = 0; jj < local_nrows; jj++){ //copy cells into local cells of halo_cells
-    for(int ii = 0; ii < halo_local_ncols-1; ii++){
-      halo_cells[(ii+1) + jj*halo_local_ncols] = cells[ii + jj*local_ncols];
+    for(int ii = 0; ii < local_ncols; ii++){
+      halo_cells[(ii+1) + jj*halo_local_ncols] = cells[(ii + jj*params.nx) + (rank*local_ncols)];
+      //halo_cells[(ii+1) + jj*halo_local_ncols] = cells[ii + jj*local_ncols];
       //halo_cells[(ii+1) + jj*halo_local_ncols].speeds = cells[ii + jj*local_ncols].speeds;
     }
   }
+ 
+  //printf("N_cols: %d\n", local_ncols );	
 
   //Send left, receive right
   for(int jj = 0; jj < halo_local_nrows; jj++){
@@ -306,20 +309,26 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank
     {
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
-      int y_n = (jj + 1) % local_nrows;
-      int x_e = (ii + 1) % local_ncols;
-      int y_s = (jj == 0) ? (jj + local_nrows - 1) : (jj - 1);
-      int x_w = (ii == 0) ? (ii + local_ncols - 1) : (ii - 1);
+      //int y_n = (jj + 1) % local_nrows;
+      //int x_e = (ii + 1) % local_ncols;
+      //int y_s = (jj == 0) ? (jj + local_nrows - 1) : (jj - 1);
+      //int x_w = (ii == 0) ? (ii + local_ncols - 1) : (ii - 1);
+      int y_n = (jj + 1) % halo_local_nrows;
+      int x_e = ((ii+1) + 1);
+      int y_s = (jj == 0) ? (jj + halo_local_nrows - 1) : (jj - 1);
+      int x_w = ((ii+1) - 1);
 
-      tmp_cells[ii + jj*local_ncols].speeds[0] = halo_cells[ii + jj*local_ncols].speeds[0]; /* central cell, no movement */
-      tmp_cells[ii + jj*local_ncols].speeds[1] = halo_cells[x_w + jj*local_ncols].speeds[1]; /* east */
-      tmp_cells[ii + jj*local_ncols].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
-      tmp_cells[ii + jj*local_ncols].speeds[3] = halo_cells[x_e + jj*local_ncols].speeds[3]; /* west */
-      tmp_cells[ii + jj*local_ncols].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
-      tmp_cells[ii + jj*local_ncols].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
-      tmp_cells[ii + jj*local_ncols].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
-      tmp_cells[ii + jj*local_ncols].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
-      tmp_cells[ii + jj*local_ncols].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+      halo_cells[(ii+1) + jj*halo_local_ncols] = cells[(ii + jj*params.nx) + (rank*local_ncols)]; 
+
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[0] = halo_cells[(ii+1) + jj*halo_local_ncols].speeds[0]; /* central cell, no movement */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[1] = halo_cells[x_w + jj*local_ncols].speeds[1]; /* east */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[2] = halo_cells[(ii+1) + y_s*local_ncols].speeds[2]; /* north */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[3] = halo_cells[x_e + jj*local_ncols].speeds[3]; /* west */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[4] = halo_cells[(ii+1) + y_n*local_ncols].speeds[4]; /* south */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
 
       /* propagate densities from neighbouring cells, following
       ** appropriate directions of travel and writing into
