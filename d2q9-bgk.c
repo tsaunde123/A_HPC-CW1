@@ -138,11 +138,13 @@ int main(int argc, char* argv[])
   double systim;                /* floating point number to record elapsed system CPU time */
   int rank;                     /* 'rank' of process among it's cohort */
   int size;                     /* size of cohort, i.e. num processes started */
-  int flag;                     /* for checking whether MPI_Init() has been called */
-  int strlen;                   /* length of a character array */
-  enum bool {FALSE,TRUE};       /* enumerated type: false = 0, true = 1 */
-  char hostname[MPI_MAX_PROCESSOR_NAME];  /* character array to hold hostname running process */
-
+  MPI_Status status;     /* struct used by MPI_Recv */
+  int local_nrows;       /* number of rows apportioned to this rank */
+  int local_ncols;       /* number of columns apportioned to this rank */
+  int remote_ncols;      /* number of columns apportioned to a remote rank */
+  double *sendbuf;       /* buffer to hold values to send */
+  double *recvbuf;       /* buffer to hold received values */
+  double *printbuf;      /* buffer to hold values for printing */
 
   /* parse the command line */
   if (argc != 3)
@@ -155,26 +157,41 @@ int main(int argc, char* argv[])
     obstaclefile = argv[2];
   }
 
-  //MPI_Init( &argc, &argv );
-
-  //MPI_Initialized(&flag);
-  //if ( flag != TRUE ) {
-  //  MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
- // }
-
-  /* determine the hostname */
-  //MPI_Get_processor_name(hostname,&strlen);
-
-  //MPI_Comm_size( MPI_COMM_WORLD, &size );
-  //MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-
-  //printf("Hello, world; from host %s: process %d of %d\n", hostname, rank, size);
-
-  /* finialise the MPI enviroment */
-  //MPI_Finalize();
-
   /* initialise our data structures and load values from file */
   initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+
+  MPI_Init( &argc, &argv );
+
+  MPI_Comm_size( MPI_COMM_WORLD, &size );
+  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
+  int top = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
+  int bottom = (rank + 1) % size;
+  int local_nrows = calc_ncols_from_rank(rank, size, params.ny);
+  int local_ncols = params.nx;
+  int tag = 0;
+  MPI_Status status;
+
+  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  /* The last rank has the most columns apportioned.
+     printbuf must be big enough to hold this number */
+  int remote_nrows = calc_ncols_from_rank(size-1, size, params.ny);
+  t_speed* printbuf = (t_speed*)malloc(sizeof(t_speed) * (remote_nrows + 2));
+
+  t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows + 2) * local_ncols);
+  int halo_local_nrows = local_nrows + 2;
+  int halo_local_ncols = local_ncols;
+
+  if(rank == MASTER){
+    //memcpy( void* dest, const void* src, std::size_t count );
+    for(int dest = 1; dest < size; dest++){
+      MPI_Send(&cells[(local_nrows*local_ncols) + (dest*(local_nrows*local_nrows))],
+          local_nrows*local_ncols, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+    }
+  } else {
+    MPI_Recv(message, BUFSIZ, MPI_CHAR, MASTER, tag, MPI_COMM_WORLD, &status);
+  }
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -618,6 +635,20 @@ int initialise(const char* paramfile, const char* obstaclefile,
 
   return EXIT_SUCCESS;
 }
+
+int calc_ncols_from_rank(int rank, int size, int numRows)
+{
+  int nrows;
+
+  nrows = numRows / size;       /* integer division */
+  if ((numRows % size) != 0) {  /* if there is a remainder */
+    if (rank == size - 1)
+      ncols += numRows % size;  /* add remainder to last rank */
+  }
+
+  return nrows;
+}
+
 
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
              int** obstacles_ptr, float** av_vels_ptr)
