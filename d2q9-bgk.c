@@ -318,7 +318,6 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank
       int y_s = (jj == 0) ? (jj + halo_local_nrows - 1) : (jj - 1);
       int x_w = ((ii+1) - 1);
 
-      halo_cells[(ii+1) + jj*halo_local_ncols] = cells[(ii + jj*params.nx) + (rank*local_ncols)]; 
 
       tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[0] = halo_cells[(ii+1) + jj*halo_local_ncols].speeds[0]; /* central cell, no movement */
       tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[1] = halo_cells[x_w + jj*local_ncols].speeds[1]; /* east */
