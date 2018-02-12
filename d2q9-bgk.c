@@ -60,6 +60,8 @@
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
 #define AVVELSFILE      "av_vels.dat"
+#define MASTER          0
+#define NTYPES          2  /* the number of intrinsic types in our derived type */ 
 
 /* struct to hold the parameter values */
 typedef struct
@@ -87,6 +89,8 @@ typedef struct
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
                int** obstacles_ptr, float** av_vels_ptr);
+
+int calc_ncols_from_rank(int rank, int size, int numRows);
 
 /*
 ** The main calculation methods.
@@ -141,10 +145,23 @@ int main(int argc, char* argv[])
   MPI_Status status;     /* struct used by MPI_Recv */
   int local_nrows;       /* number of rows apportioned to this rank */
   int local_ncols;       /* number of columns apportioned to this rank */
-  int remote_ncols;      /* number of columns apportioned to a remote rank */
-  double *sendbuf;       /* buffer to hold values to send */
-  double *recvbuf;       /* buffer to hold received values */
-  double *printbuf;      /* buffer to hold values for printing */
+  int remote_nrows;      /* number of columns apportioned to a remote rank */
+  t_speed* sendbuf;       /* buffer to hold values to send */
+  t_speed* recvbuf;       /* buffer to hold received values */
+  t_speed* printbuf;      /* buffer to hold values for printing */
+  
+  //float  station_freq;            /* radio station frequency */
+  //char   station_name[STRLEN];    /* radio station name */
+  //int    station_preset_num;      /* each station has a shortcut */
+
+  //int block_lengths[NTYPES];      /* num of each type in a 'block' of the derived type */
+  //MPI_Aint displacements[NTYPES]; /* associated memory displacements for each block */
+  //MPI_Datatype typelist[NTYPES];  /* the actual intrinsic types comprising our bundle */
+
+  //MPI_Aint base_address;         /* used for calculating memory displacments */
+  //MPI_Aint address;               /* Note MPI_Aint allows for especially large displacements */
+
+  //MPI_Datatype my_dev_type;       /* the new type we'll make */
 
   /* parse the command line */
   if (argc != 3)
@@ -156,10 +173,20 @@ int main(int argc, char* argv[])
     paramfile = argv[1];
     obstaclefile = argv[2];
   }
+  
+  /*MPI_Init( &argc, &argv );
 
+  MPI_Comm_size( MPI_COMM_WORLD, &size );
+  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
+  if(rank == Master){ 
+    // initialise our data structures and load values from file
+    initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+  }*/
+  
   /* initialise our data structures and load values from file */
   initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
-
+  
   MPI_Init( &argc, &argv );
 
   MPI_Comm_size( MPI_COMM_WORLD, &size );
@@ -167,17 +194,16 @@ int main(int argc, char* argv[])
 
   int top = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
   int bottom = (rank + 1) % size;
-  int local_nrows = calc_ncols_from_rank(rank, size, params.ny);
-  int local_ncols = params.nx;
+  local_nrows = calc_ncols_from_rank(rank, size, params.ny);
+  local_ncols = params.nx;
   int tag = 0;
-  MPI_Status status;
 
-  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
-  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   /* The last rank has the most columns apportioned.
      printbuf must be big enough to hold this number */
-  int remote_nrows = calc_ncols_from_rank(size-1, size, params.ny);
-  t_speed* printbuf = (t_speed*)malloc(sizeof(t_speed) * (remote_nrows + 2));
+  remote_nrows = calc_ncols_from_rank(size-1, size, params.ny);
+  printbuf = (t_speed*)malloc(sizeof(t_speed) * (remote_nrows + 2));
 
   t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows + 2) * local_ncols);
   int halo_local_nrows = local_nrows + 2;
@@ -186,11 +212,28 @@ int main(int argc, char* argv[])
   if(rank == MASTER){
     //memcpy( void* dest, const void* src, std::size_t count );
     for(int dest = 1; dest < size; dest++){
-      MPI_Send(&cells[(local_nrows*local_ncols) + (dest*(local_nrows*local_nrows))],
-          local_nrows*local_ncols, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+      if(dest == size-1){
+        t_speed* buf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
+        for(int jj = 0; jj < remote_nrows * local_ncols; jj++){
+          buf[jj] = cells[jj + (dest*(local_nrows*local_ncols))];
+        }
+        MPI_Send(buf, remote_nrows*local_ncols, MPI_FLOAT, dest, tag, MPI_COMM_WORLD);
+      } else{
+        t_speed* buf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
+        for(int jj = 0; jj < local_nrows * local_ncols; jj++){
+          buf[jj] = cells[jj + (dest*(local_nrows*local_nrows))];
+        }
+        MPI_Send(buf, local_nrows*local_ncols, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+      }
     }
   } else {
-    MPI_Recv(message, BUFSIZ, MPI_CHAR, MASTER, tag, MPI_COMM_WORLD, &status);
+    if(rank == size-1){
+      MPI_Recv(&cells[(local_nrows*local_ncols) + (rank*(local_nrows*local_nrows))],
+          remote_nrows*local_ncols, MPI_CHAR, MASTER, tag, MPI_COMM_WORLD, &status);
+    } else {
+      MPI_Recv(&cells[(local_nrows*local_ncols) + (rank*(local_nrows*local_nrows))],
+            local_nrows*local_ncols, MPI_CHAR, MASTER, tag, MPI_COMM_WORLD, &status);
+    }
   }
 
   /* iterate for maxIters timesteps */
@@ -643,7 +686,7 @@ int calc_ncols_from_rank(int rank, int size, int numRows)
   nrows = numRows / size;       /* integer division */
   if ((numRows % size) != 0) {  /* if there is a remainder */
     if (rank == size - 1)
-      ncols += numRows % size;  /* add remainder to last rank */
+      nrows += numRows % size;  /* add remainder to last rank */
   }
 
   return nrows;
