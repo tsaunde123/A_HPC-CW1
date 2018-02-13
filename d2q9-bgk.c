@@ -61,6 +61,7 @@
 #define FINALSTATEFILE  "final_state.dat"
 #define AVVELSFILE      "av_vels.dat"
 #define MASTER          0
+#define NTYPES          1
 
 /* struct to hold the parameter values */
 typedef struct
@@ -149,6 +150,9 @@ int main(int argc, char* argv[])
   double *sendbuf;       /* buffer to hold values to send */
   double *recvbuf;       /* buffer to hold received values */
   double *printbuf;      /* buffer to hold values for printing */
+  float  station_freq;            /* radio station frequency */
+  char   station_name[STRLEN];    /* radio station name */
+  int    station_preset_num;      /* each station has a shortcut */
 
   /* parse the command line */
   if (argc != 3)
@@ -161,13 +165,24 @@ int main(int argc, char* argv[])
     obstaclefile = argv[2];
   }
 
+  MPI_Init( &argc, &argv );
+  MPI_Comm_size( MPI_COMM_WORLD, &size );
+
+  MPI_Datatype types[NTYPES] = {MPI_FLOAT}; //NTYPES=1 for now
+  int blocklengths[NTYPES] = {NSPEEDS};
+  MPI_Datatype MPI_cell_type;
+  MPI_Aint     offsets[NTYPES];
+  offsets[0] = offsetof(t_speed, speeds);
+
+  MPI_Type_create_struct(NTYPES, blocklengths, offsets, types, &MPI_cell_type);
+  MPI_Type_commit(&MPI_cell_type);
+
+  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
   /* initialise our data structures and load values from file */
   initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
 
-  MPI_Init( &argc, &argv );
 
-  MPI_Comm_size( MPI_COMM_WORLD, &size );
-  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -276,8 +291,8 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank
       //halo_cells[(ii+1) + jj*halo_local_ncols].speeds = cells[ii + jj*local_ncols].speeds;
     }
   }
- 
-  //printf("N_cols: %d\n", local_ncols );	
+
+  //printf("N_cols: %d\n", local_ncols );
 
   //Send top, receive bottom
   for(int jj = 0; jj < halo_local_ncols; jj++){
