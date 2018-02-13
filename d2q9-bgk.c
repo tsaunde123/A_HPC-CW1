@@ -61,7 +61,7 @@
 #define FINALSTATEFILE  "final_state.dat"
 #define AVVELSFILE      "av_vels.dat"
 #define MASTER          0
-#define NTYPES          2  /* the number of intrinsic types in our derived type */ 
+#define NTYPES          1  /* the number of intrinsic types in our derived type */
 
 /* struct to hold the parameter values */
 typedef struct
@@ -149,19 +149,7 @@ int main(int argc, char* argv[])
   t_speed* sendbuf;       /* buffer to hold values to send */
   t_speed* recvbuf;       /* buffer to hold received values */
   t_speed* printbuf;      /* buffer to hold values for printing */
-  
-  //float  station_freq;            /* radio station frequency */
-  //char   station_name[STRLEN];    /* radio station name */
-  //int    station_preset_num;      /* each station has a shortcut */
 
-  //int block_lengths[NTYPES];      /* num of each type in a 'block' of the derived type */
-  //MPI_Aint displacements[NTYPES]; /* associated memory displacements for each block */
-  //MPI_Datatype typelist[NTYPES];  /* the actual intrinsic types comprising our bundle */
-
-  //MPI_Aint base_address;         /* used for calculating memory displacments */
-  //MPI_Aint address;               /* Note MPI_Aint allows for especially large displacements */
-
-  //MPI_Datatype my_dev_type;       /* the new type we'll make */
 
   /* parse the command line */
   if (argc != 3)
@@ -173,24 +161,34 @@ int main(int argc, char* argv[])
     paramfile = argv[1];
     obstaclefile = argv[2];
   }
-  
+
   /*MPI_Init( &argc, &argv );
 
   MPI_Comm_size( MPI_COMM_WORLD, &size );
   MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-  if(rank == Master){ 
+  if(rank == Master){
     // initialise our data structures and load values from file
     initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
   }*/
-  
+
+  MPI_Init( &argc, &argv );
+  MPI_Comm_size( MPI_COMM_WORLD, &size );
+
+  MPI_Datatype types[NTYPES] = {MPI_FLOAT}; //NTYPES=1 for now
+  int blocklengths[NTYPES] = {NSPEEDS};
+  MPI_Datatype MPI_cell_type;
+  MPI_Aint     offsets[NTYPES];
+  offsets[0] = offsetof(t_speed, speeds);
+
+  MPI_Type_create_struct(NTYPES, blocklengths, offsets, types, &MPI_cell_type);
+  MPI_Type_commit(&MPI_cell_type);
+
+  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
+
   /* initialise our data structures and load values from file */
   initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
-  
-  MPI_Init( &argc, &argv );
-
-  MPI_Comm_size( MPI_COMM_WORLD, &size );
-  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
   int top = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
   int bottom = (rank + 1) % size;
