@@ -251,27 +251,27 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank, int size)
 {
-  int left = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
-  int right = (rank + 1) % size;
-  int local_nrows = params.ny;
-  int local_ncols = calc_ncols_from_rank(rank, size, params.nx);
-  int tag = 0;
   MPI_Status status;
+  int top = (rank + 1) % size;
+  int bottom = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
+  int local_nrows = calc_ncols_from_rank(rank, size, params.ny);
+  int local_ncols = params.nx;
+  int tag = 0;
 
-  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows);
-  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows);
+  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   /* The last rank has the most columns apportioned.
      printbuf must be big enough to hold this number */
-  int remote_ncols = calc_ncols_from_rank(size-1, size, params.nx);
-  t_speed* printbuf = (t_speed*)malloc(sizeof(t_speed) * (remote_ncols + 2));
+  int remote_nrows = calc_ncols_from_rank(size-1, size, params.ny);
+  t_speed* printbuf = (t_speed*)malloc(sizeof(t_speed) * (remote_nrows + 2));
 
-  t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * local_nrows * (local_ncols + 2));
-  int halo_local_nrows = local_nrows;
-  int halo_local_ncols = local_ncols + 2;
+  t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
+  int halo_local_nrows = local_nrows + 2;
+  int halo_local_ncols = local_ncols;
 
   for(int jj = 0; jj < local_nrows; jj++){ //copy cells into local cells of halo_cells
     for(int ii = 0; ii < local_ncols; ii++){
-      halo_cells[(ii+1) + jj*halo_local_ncols] = cells[(ii + jj*params.nx) + (rank*local_ncols)];
+      halo_cells[ii + (jj+1)*halo_local_ncols] = cells[(ii + jj*params.nx) + (rank*(local_nrows*local_ncols))];
       //halo_cells[(ii+1) + jj*halo_local_ncols] = cells[ii + jj*local_ncols];
       //halo_cells[(ii+1) + jj*halo_local_ncols].speeds = cells[ii + jj*local_ncols].speeds;
     }
@@ -279,25 +279,25 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank
  
   //printf("N_cols: %d\n", local_ncols );	
 
-  //Send left, receive right
-  for(int jj = 0; jj < halo_local_nrows; jj++){
-    sendbuf[jj] = halo_cells[jj*halo_local_ncols + 1];
+  //Send top, receive bottom
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuf[jj] = halo_cells[jj + (halo_local_ncols*local_nrows)];
   }
-  MPI_Sendrecv(sendbuf, halo_local_nrows, MPI_DOUBLE, left, tag,
-		 recvbuf, halo_local_nrows, MPI_DOUBLE, right, tag,
+  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, top, tag,
+		 recvbuf, halo_local_ncols, MPI_FLOAT, bottom, tag,
 		 MPI_COMM_WORLD, &status);
-  for(int jj = 0; jj < halo_local_nrows; jj++){
-    halo_cells[jj*halo_local_ncols + (local_ncols+1)] = recvbuf[jj];
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj] = recvbuf[jj];
   }
-  //Send right, receive left
-  for(int jj = 0; jj < halo_local_nrows; jj++){
-    sendbuf[jj] = halo_cells[jj*halo_local_ncols + local_ncols];
+  //Send bottom, receive top
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuf[jj] = halo_cells[jj + (halo_local_ncols*1)];
   }
-  MPI_Sendrecv(sendbuf, halo_local_nrows, MPI_DOUBLE, right, tag,
-		 recvbuf, halo_local_nrows, MPI_DOUBLE, left, tag,
+  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, bottom, tag,
+		 recvbuf, halo_local_ncols, MPI_FLOAT, top, tag,
 		 MPI_COMM_WORLD, &status);
-  for(int jj = 0; jj < halo_local_nrows; jj++){
-    halo_cells[jj*halo_local_ncols] = recvbuf[jj];
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuf[jj];
   }
 
 
@@ -313,17 +313,17 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, int rank
       //int x_e = (ii + 1) % local_ncols;
       //int y_s = (jj == 0) ? (jj + local_nrows - 1) : (jj - 1);
       //int x_w = (ii == 0) ? (ii + local_ncols - 1) : (ii - 1);
-      int y_n = (jj + 1) % halo_local_nrows;
-      int x_e = ((ii+1) + 1);
-      int y_s = (jj == 0) ? (jj + halo_local_nrows - 1) : (jj - 1);
-      int x_w = ((ii+1) - 1);
+      int y_n = (jj+1) + 1;
+      int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
+      int y_s = (jj+1) - 1;
+      int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
 
-      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[0] = halo_cells[(ii+1) + jj*halo_local_ncols].speeds[0]; /* central cell, no movement */
-      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[1] = halo_cells[x_w + jj*local_ncols].speeds[1]; /* east */
-      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[2] = halo_cells[(ii+1) + y_s*local_ncols].speeds[2]; /* north */
-      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[3] = halo_cells[x_e + jj*local_ncols].speeds[3]; /* west */
-      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[4] = halo_cells[(ii+1) + y_n*local_ncols].speeds[4]; /* south */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
+      tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
       tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
       tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
       tmp_cells[(ii + jj*params.nx) + (rank*local_ncols)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
@@ -356,6 +356,18 @@ int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obsta
     {
       /* if the cell contains an obstacle */
       if (obstacles[jj*params.nx + ii])
+      {
+        /* called after propagate, so taking values from scratch space
+        ** mirroring, and writing into main grid */
+        cells[ii + jj*params.nx].speeds[1] = tmp_cells[ii + jj*params.nx].speeds[3];
+        cells[ii + jj*params.nx].speeds[2] = tmp_cells[ii + jj*params.nx].speeds[4];
+        cells[ii + jj*params.nx].speeds[3] = tmp_cells[ii + jj*params.nx].speeds[1];
+        cells[ii + jj*params.nx].speeds[4] = tmp_cells[ii + jj*params.nx].speeds[2];
+        cells[ii + jj*params.nx].speeds[5] = tmp_cells[ii + jj*params.nx].speeds[7];
+        cells[ii + jj*params.nx].speeds[6] = tmp_cells[ii + jj*params.nx].speeds[8];
+        cells[ii + jj*params.nx].speeds[7] = tmp_cells[ii + jj*params.nx].speeds[5];
+        cells[ii + jj*params.nx].speeds[8] = tmp_cells[ii + jj*params.nx].speeds[6];
+      }
       {
         /* called after propagate, so taking values from scratch space
         ** mirroring, and writing into main grid */
@@ -651,18 +663,6 @@ int initialise(const char* paramfile, const char* obstaclefile,
 
   if (fp == NULL)
   {
-    sprintf(message, "could not open input obstacles file: %s", obstaclefile);
-    die(message, __LINE__, __FILE__);
-  }
-
-  /* read-in the blocked cells list */
-  while ((retval = fscanf(fp, "%d %d %d\n", &xx, &yy, &blocked)) != EOF)
-  {
-    /* some checks */
-    if (retval != 3) die("expected 3 values per line in obstacle file", __LINE__, __FILE__);
-
-    if (xx < 0 || xx > params->nx - 1) die("obstacle x-coord out of range", __LINE__, __FILE__);
-
     if (yy < 0 || yy > params->ny - 1) die("obstacle y-coord out of range", __LINE__, __FILE__);
 
     if (blocked != 1) die("obstacle blocked value should be 1", __LINE__, __FILE__);
@@ -683,18 +683,19 @@ int initialise(const char* paramfile, const char* obstaclefile,
   return EXIT_SUCCESS;
 }
 
-int calc_ncols_from_rank(int rank, int size, int width)
+int calc_ncols_from_rank(int rank, int size, int numRows)
 {
-  int ncols;
+  int nrows;
 
-  ncols = width / size;       /* integer division */
-  if ((width % size) != 0) {  /* if there is a remainder */
+  nrows = numRows / size;       /* integer division */
+  if ((numRows % size) != 0) {  /* if there is a remainder */
     if (rank == size - 1)
-      ncols += width % size;  /* add remainder to last rank */
+      nrows += numRows % size;  /* add remainder to last rank */
   }
 
-  return ncols;
+  return nrows;
 }
+
 
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
              int** obstacles_ptr, float** av_vels_ptr)
