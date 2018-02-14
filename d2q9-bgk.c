@@ -213,21 +213,23 @@ int main(int argc, char* argv[])
       if(dest == size-1){
         t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
         for(int jj = 0; jj < remote_nrows * local_ncols; jj++){
-          buf[jj] = cells[jj + (dest*(local_nrows*local_ncols))];
+          sendbuf[jj] = cells[jj + (dest*(local_nrows*local_ncols))];
         }
-        MPI_Send(buf, remote_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
+        MPI_Send(sendbuf, remote_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
+        printf("Sent \n");
       } else{
         t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
         for(int jj = 0; jj < local_nrows * local_ncols; jj++){
-          buf[jj] = cells[jj + (dest*(local_nrows*local_nrows))];
+          sendbuf[jj] = cells[jj + (dest*(local_nrows*local_nrows))];
         }
-        MPI_Send(buf, local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
+        MPI_Send(sendbuf, local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
       }
     }
   } else {
     if(rank == size-1){
       t_speed* rcvbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
       MPI_Recv(rcvbuf, remote_nrows*halo_local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
+      printf("Received \n");
       for(int jj = 0; jj < remote_nrows * local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvbuf[jj];
       }
