@@ -97,8 +97,8 @@ int calc_ncols_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells);
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
+int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
   t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
   int halo_local_nrows = local_nrows + 2;
   int halo_local_ncols = local_ncols;
-  int* halo_obj = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+  int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
 
   t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
   t_speed* recvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
@@ -243,12 +243,12 @@ int main(int argc, char* argv[])
       // int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
       MPI_Recv(recvcbuf, remote_nrows*halo_local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
       printf("Received \n");
-      for(int jj = 0; jj < (remote_nrows+2) * halo_local_ncols; jj++){
+      for(int jj = 0; jj < halo_local_nrows * halo_local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
       }
       MPI_Recv(recvobuf, remote_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < local_nrows*local_ncols; jj++){
-        halo_obj[jj] = recvobuf[jj];
+        halo_obs[jj] = recvobuf[jj];
       }
     } else {
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
       }
       MPI_Recv(recvobuf, local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < local_nrows*local_ncols; jj++){
-        halo_obj[jj] = recvobuf[jj];
+        halo_obs[jj] = recvobuf[jj];
       }
     }
   }
@@ -299,41 +299,50 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows)
 {
-  accelerate_flow(params, cells, obstacles, halo_cells);
+  if(size == params.ny){
+    if(rank == size-2){
+      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
+    }
+  } else {
+    if(rank == size-1){
+      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
+    }
+  }
   propagate(params, cells, tmp_cells);
   rebound(params, cells, tmp_cells, obstacles);
   collision(params, cells, tmp_cells, obstacles);
   return EXIT_SUCCESS;
 }
 
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells)
+int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows)
 {
   /* compute weighting factors */
   float w1 = params.density * params.accel / 9.f;
   float w2 = params.density * params.accel / 36.f;
 
   /* modify the 2nd row of the grid */
-  int jj = params.ny - 2;
+  int h_jj = (local_nrows - 1) - 2;
+  int o_jj = local_nrows - 2;
 
   for (int ii = 0; ii < params.nx; ii++)
   {
     /* if the cell is not occupied and
     ** we don't send a negative density */
-    if (!obstacles[ii + jj*params.nx]
-        && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
-        && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
-        && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
+    if (!halo_obs[ii + o_jj*params.nx]
+        && (halo_cells[ii + h_jj*params.nx].speeds[3] - w1) > 0.f
+        && (halo_cells[ii + h_jj*params.nx].speeds[6] - w2) > 0.f
+        && (halo_cells[ii + h_jj*params.nx].speeds[7] - w2) > 0.f)
     {
       /* increase 'east-side' densities */
-      cells[ii + jj*params.nx].speeds[1] += w1;
-      cells[ii + jj*params.nx].speeds[5] += w2;
-      cells[ii + jj*params.nx].speeds[8] += w2;
+      halo_cells[ii + h_jj*params.nx].speeds[1] += w1;
+      halo_cells[ii + h_jj*params.nx].speeds[5] += w2;
+      halo_cells[ii + h_jj*params.nx].speeds[8] += w2;
       /* decrease 'west-side' densities */
-      cells[ii + jj*params.nx].speeds[3] -= w1;
-      cells[ii + jj*params.nx].speeds[6] -= w2;
-      cells[ii + jj*params.nx].speeds[7] -= w2;
+      halo_cells[ii + h_jj*params.nx].speeds[3] -= w1;
+      halo_cells[ii + h_jj*params.nx].speeds[6] -= w2;
+      halo_cells[ii + h_jj*params.nx].speeds[7] -= w2;
     }
   }
 
@@ -622,20 +631,23 @@ int initialise(const char* paramfile, const char* obstaclefile,
   ** a 1D array of these structs.
   */
 
-  /* main grid */
-  *cells_ptr = (t_speed*)malloc(sizeof(t_speed) * (params->ny * params->nx));
 
-  if (*cells_ptr == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
+  if(rank == MASTER){
+    /* main grid */
+    *cells_ptr = (t_speed*)malloc(sizeof(t_speed) * (params->ny * params->nx));
 
-  /* 'helper' grid, used as scratch space */
-  *tmp_cells_ptr = (t_speed*)malloc(sizeof(t_speed) * (params->ny * params->nx));
+    if (*cells_ptr == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
 
-  if (*tmp_cells_ptr == NULL) die("cannot allocate memory for tmp_cells", __LINE__, __FILE__);
+    /* 'helper' grid, used as scratch space */
+    *tmp_cells_ptr = (t_speed*)malloc(sizeof(t_speed) * (params->ny * params->nx));
 
-  /* the map of obstacles */
-  *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
+    if (*tmp_cells_ptr == NULL) die("cannot allocate memory for tmp_cells", __LINE__, __FILE__);
 
-  if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
+    /* the map of obstacles */
+    *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
+
+    if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
+  }
 
   /* initialise densities */
   float w0 = params->density * 4.f / 9.f;
