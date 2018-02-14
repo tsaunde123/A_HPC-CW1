@@ -88,7 +88,7 @@ typedef struct
 /* load params, allocate memory, load obstacles & initialise fluid particle densities */
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, float** av_vels_ptr);
+               int** obstacles_ptr, float** av_vels_ptr, int rank);
 
 int calc_ncols_from_rank(int rank, int size, int numRows);
 
@@ -97,7 +97,7 @@ int calc_ncols_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int size, int rank);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
@@ -188,7 +188,7 @@ int main(int argc, char* argv[])
 
 
   /* initialise our data structures and load values from file */
-  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels, rank);
 
   int top = (rank + 1) % size;
   int bottom = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
@@ -270,7 +270,7 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles, halo_cells);
+    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, size, rank);
     av_vels[tt] = av_velocity(params, cells, obstacles);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -299,7 +299,7 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int size, int rank)
 {
   if(size == params.ny){
     if(rank == size-2){
@@ -563,7 +563,7 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles)
 
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, float** av_vels_ptr)
+               int** obstacles_ptr, float** av_vels_ptr, int rank)
 {
   char   message[1024];  /* message buffer */
   FILE*   fp;            /* file pointer */
