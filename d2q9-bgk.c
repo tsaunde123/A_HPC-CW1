@@ -88,7 +88,7 @@ typedef struct
 /* load params, allocate memory, load obstacles & initialise fluid particle densities */
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, float** av_vels_ptr, int rank);
+               int** obstacles_ptr, float** av_vels_ptr);
 
 int calc_ncols_from_rank(int rank, int size, int numRows);
 
@@ -188,7 +188,7 @@ int main(int argc, char* argv[])
 
 
   /* initialise our data structures and load values from file */
-  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels, rank);
+  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
 
   int top = (rank + 1) % size;
   int bottom = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
@@ -296,6 +296,8 @@ int main(int argc, char* argv[])
   write_values(params, cells, obstacles, av_vels);
   finalise(&params, &cells, &tmp_cells, &obstacles, &av_vels);
 
+  MPI_Finalize();
+
   return EXIT_SUCCESS;
 }
 
@@ -310,6 +312,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
       accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
   }
+  //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   propagate(params, cells, tmp_cells);
   rebound(params, cells, tmp_cells, obstacles);
   collision(params, cells, tmp_cells, obstacles);
@@ -325,26 +328,49 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   /* modify the 2nd row of the grid */
   int h_jj = (local_nrows - 1) - 2;
   int o_jj = local_nrows - 2;
+  int jj = params.ny-2;  
+
+  /*for (int ii = 0; ii < params.nx; ii++)
+    {
+      // if the cell is not occupied and
+      //     ** we don't send a negative density 
+      if (!obstacles[ii + jj*params.nx]
+          && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
+          && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
+          && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
+      {
+        // increase 'east-side' densities 
+        cells[ii + jj*params.nx].speeds[1] += w1;
+        cells[ii + jj*params.nx].speeds[5] += w2;
+        cells[ii + jj*params.nx].speeds[8] += w2;
+        // decrease 'west-side' densities 
+        cells[ii + jj*params.nx].speeds[3] -= w1;
+        cells[ii + jj*params.nx].speeds[6] -= w2;
+        cells[ii + jj*params.nx].speeds[7] -= w2;
+      }
+    }*/
 
   for (int ii = 0; ii < params.nx; ii++)
   {
-    /* if the cell is not occupied and
-    ** we don't send a negative density */
+    // if the cell is not occupied and
+    // we don't send a negative density 
     if (!halo_obs[ii + o_jj*params.nx]
         && (halo_cells[ii + h_jj*params.nx].speeds[3] - w1) > 0.f
         && (halo_cells[ii + h_jj*params.nx].speeds[6] - w2) > 0.f
         && (halo_cells[ii + h_jj*params.nx].speeds[7] - w2) > 0.f)
     {
-      /* increase 'east-side' densities */
+      // increase 'east-side' densities 
       halo_cells[ii + h_jj*params.nx].speeds[1] += w1;
       halo_cells[ii + h_jj*params.nx].speeds[5] += w2;
       halo_cells[ii + h_jj*params.nx].speeds[8] += w2;
-      /* decrease 'west-side' densities */
+      // decrease 'west-side' densities 
       halo_cells[ii + h_jj*params.nx].speeds[3] -= w1;
       halo_cells[ii + h_jj*params.nx].speeds[6] -= w2;
       halo_cells[ii + h_jj*params.nx].speeds[7] -= w2;
     }
   }
+
+
 
   return EXIT_SUCCESS;
 }
@@ -563,7 +589,7 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles)
 
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, float** av_vels_ptr, int rank)
+               int** obstacles_ptr, float** av_vels_ptr)
 {
   char   message[1024];  /* message buffer */
   FILE*   fp;            /* file pointer */
@@ -632,7 +658,6 @@ int initialise(const char* paramfile, const char* obstaclefile,
   */
 
 
-  if(rank == MASTER){
     /* main grid */
     *cells_ptr = (t_speed*)malloc(sizeof(t_speed) * (params->ny * params->nx));
 
@@ -647,7 +672,6 @@ int initialise(const char* paramfile, const char* obstaclefile,
     *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
 
     if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
-  }
 
   /* initialise densities */
   float w0 = params->density * 4.f / 9.f;
