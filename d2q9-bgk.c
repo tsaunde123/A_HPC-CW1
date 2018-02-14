@@ -97,8 +97,8 @@ int calc_ncols_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells);
+int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells);
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles);
+    timestep(params, cells, tmp_cells, obstacles, halo_cells);
     av_vels[tt] = av_velocity(params, cells, obstacles);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -277,16 +277,16 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells)
 {
-  accelerate_flow(params, cells, obstacles);
+  accelerate_flow(params, cells, obstacles, halo_cells);
   propagate(params, cells, tmp_cells);
   rebound(params, cells, tmp_cells, obstacles);
   collision(params, cells, tmp_cells, obstacles);
   return EXIT_SUCCESS;
 }
 
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
+int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells)
 {
   /* compute weighting factors */
   float w1 = params.density * params.accel / 9.f;
