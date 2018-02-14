@@ -208,10 +208,10 @@ int main(int argc, char* argv[])
   int halo_local_ncols = local_ncols;
   int* halo_obj = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
 
-  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
-  t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
+  t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
+  t_speed* recvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
   int* sendobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
-  int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
+  int* recvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
 
   if(rank == MASTER){
     //memcpy( void* dest, const void* src, std::size_t count );
@@ -241,24 +241,24 @@ int main(int argc, char* argv[])
     if(rank == size-1){
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
       // int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
-      MPI_Recv(rcvcbuf, remote_nrows*halo_local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
+      MPI_Recv(recvcbuf, remote_nrows*halo_local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
       printf("Received \n");
       for(int jj = 0; jj < (remote_nrows+2) * halo_local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
       }
-      MPI_Recv(rcvobuf, remote_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int jj = 0; jj < local_nrows*local_ncols; j++){
+      MPI_Recv(recvobuf, remote_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+      for(int jj = 0; jj < local_nrows*local_ncols; jj++){
         halo_obj[jj] = recvobuf[jj];
       }
     } else {
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
       // int* rcvobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
-      MPI_Recv(rcvcbuf,local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
+      MPI_Recv(recvcbuf,local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < halo_local_nrows * halo_local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
       }
-      MPI_Recv(rcvobuf, local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int jj = 0; jj < local_nrows*local_ncols; j++){
+      MPI_Recv(recvobuf, local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+      for(int jj = 0; jj < local_nrows*local_ncols; jj++){
         halo_obj[jj] = recvobuf[jj];
       }
     }
@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 }
 
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells)
-{§
+{
   accelerate_flow(params, cells, obstacles, halo_cells);
   propagate(params, cells, tmp_cells);
   rebound(params, cells, tmp_cells, obstacles);
