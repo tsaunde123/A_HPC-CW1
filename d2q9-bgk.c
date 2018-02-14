@@ -279,6 +279,36 @@ int main(int argc, char* argv[])
 #endif
   }
 
+  if(rank != MASTER){
+    if(rank == size - 1){
+      for(int jj = 0; jj < remote_nrows * local_ncols; jj++){
+        sendcbuf[jj] = halo_cells[jj + 1*local_ncols];
+      }
+      MPI_Send(sendcbuf, remote_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD);
+    } else {
+      for(int jj = 0; jj < local_nrows * local_ncols; jj++){
+        sendcbuf[jj] = halo_cells[jj + 1*local_ncols];
+      }
+      MPI_Send(sendcbuf, local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD);
+
+    }
+  } else {
+    for(int source = 1; source < size; source++){
+      if(source == size - 1){
+        MPI_Recv(recvcbuf, remote_nrows*halo_local_ncols, MPI_cell_type, source, tag, MPI_COMM_WORLD, &status);
+        for(int jj = 0; jj < remote_nrows*local_ncols; jj++){
+          cells[jj + (source*(local_nrows*local_ncols))] = recvcbuf[jj];
+        }
+      } else {
+        MPI_Recv(recvcbuf, local_nrows*halo_local_ncols, MPI_cell_type, source, tag, MPI_COMM_WORLD, &status);
+        for(int jj = 0; jj < local_nrows*local_ncols; jj++){
+          cells[jj + (source*(local_nrows*local_ncols))] = recvcbuf[jj];
+        }
+      }
+    }
+  }
+
+
   gettimeofday(&timstr, NULL);
   toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
   getrusage(RUSAGE_SELF, &ru);
@@ -303,7 +333,7 @@ int main(int argc, char* argv[])
 
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int size, int rank)
 {
-  if(size == params.ny){
+  /*if(size == params.ny){
     if(rank == size-2){
       accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
@@ -311,7 +341,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
     if(rank == size-1){
       accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
-  }
+  }*/
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   propagate(params, cells, tmp_cells);
   rebound(params, cells, tmp_cells, obstacles);
@@ -328,22 +358,22 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   /* modify the 2nd row of the grid */
   int h_jj = (local_nrows - 1) - 2;
   int o_jj = local_nrows - 2;
-  int jj = params.ny-2;  
+  int jj = params.ny-2;
 
   /*for (int ii = 0; ii < params.nx; ii++)
     {
       // if the cell is not occupied and
-      //     ** we don't send a negative density 
+      //     ** we don't send a negative density
       if (!obstacles[ii + jj*params.nx]
           && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
           && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
           && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
       {
-        // increase 'east-side' densities 
+        // increase 'east-side' densities
         cells[ii + jj*params.nx].speeds[1] += w1;
         cells[ii + jj*params.nx].speeds[5] += w2;
         cells[ii + jj*params.nx].speeds[8] += w2;
-        // decrease 'west-side' densities 
+        // decrease 'west-side' densities
         cells[ii + jj*params.nx].speeds[3] -= w1;
         cells[ii + jj*params.nx].speeds[6] -= w2;
         cells[ii + jj*params.nx].speeds[7] -= w2;
@@ -353,17 +383,17 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   for (int ii = 0; ii < params.nx; ii++)
   {
     // if the cell is not occupied and
-    // we don't send a negative density 
+    // we don't send a negative density
     if (!halo_obs[ii + o_jj*params.nx]
         && (halo_cells[ii + h_jj*params.nx].speeds[3] - w1) > 0.f
         && (halo_cells[ii + h_jj*params.nx].speeds[6] - w2) > 0.f
         && (halo_cells[ii + h_jj*params.nx].speeds[7] - w2) > 0.f)
     {
-      // increase 'east-side' densities 
+      // increase 'east-side' densities
       halo_cells[ii + h_jj*params.nx].speeds[1] += w1;
       halo_cells[ii + h_jj*params.nx].speeds[5] += w2;
       halo_cells[ii + h_jj*params.nx].speeds[8] += w2;
-      // decrease 'west-side' densities 
+      // decrease 'west-side' densities
       halo_cells[ii + h_jj*params.nx].speeds[3] -= w1;
       halo_cells[ii + h_jj*params.nx].speeds[6] -= w2;
       halo_cells[ii + h_jj*params.nx].speeds[7] -= w2;
@@ -585,6 +615,29 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles)
   }
 
   return tot_u / (float)tot_cells;
+}
+
+void halo_ex(){
+  //Send top, receive bottom
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuf[jj] = halo_cells[jj + (halo_local_ncols*local_nrows)];
+  }
+  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, top, tag,
+                 recvbuf, halo_local_ncols, MPI_FLOAT, bottom, tag,
+                 MPI_COMM_WORLD, &status);
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj] = recvbuf[jj];
+  }
+  //Send bottom, receive top
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuf[jj] = halo_cells[jj + (halo_local_ncols*1)];
+  }
+  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, bottom, tag,
+                 recvbuf, halo_local_ncols, MPI_FLOAT, top, tag,
+                 MPI_COMM_WORLD, &status);
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuf[jj];
+  }
 }
 
 int initialise(const char* paramfile, const char* obstaclefile,
