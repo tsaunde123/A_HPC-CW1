@@ -102,7 +102,8 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp);
-int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
+int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
+              t_speed* halo_temp, t_speed* halo_cells);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
 
 /* finalise, including freeing up allocated memory */
@@ -349,7 +350,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
   rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
-  collision(params, cells, tmp_cells, obstacles);
+  collision(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_temp, halo_cells);
   return EXIT_SUCCESS;
 }
 
@@ -507,7 +508,8 @@ int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obsta
   return EXIT_SUCCESS;
 }
 
-int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
+              t_speed* halo_temp, t_speed* halo_cells)
 {
   const float c_sq = 1.f / 3.f; /* square of speed of sound */
   const float w0 = 4.f / 9.f;  /* weighting factor */
@@ -518,36 +520,36 @@ int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obs
   ** NB the collision step is called after
   ** the propagate step and so values of interest
   ** are in the scratch-space grid */
-  for (int jj = 0; jj < params.ny; jj++)
+  for (int jj = 0; jj < local_nrows; jj++)
   {
-    for (int ii = 0; ii < params.nx; ii++)
+    for (int ii = 0; ii < local_ncols; ii++)
     {
       /* don't consider occupied cells */
-      if (!obstacles[ii + jj*params.nx])
+      if (!halo_obs[ii + jj*params.nx])
       {
         /* compute local density total */
         float local_density = 0.f;
 
         for (int kk = 0; kk < NSPEEDS; kk++)
         {
-          local_density += tmp_cells[ii + jj*params.nx].speeds[kk];
+          local_density += halo_temp[ii + jj*params.nx].speeds[kk];
         }
 
         /* compute x velocity component */
-        float u_x = (tmp_cells[ii + jj*params.nx].speeds[1]
-                      + tmp_cells[ii + jj*params.nx].speeds[5]
-                      + tmp_cells[ii + jj*params.nx].speeds[8]
-                      - (tmp_cells[ii + jj*params.nx].speeds[3]
-                         + tmp_cells[ii + jj*params.nx].speeds[6]
-                         + tmp_cells[ii + jj*params.nx].speeds[7]))
+        float u_x = (halo_temp[ii + jj*params.nx].speeds[1]
+                      + halo_temp[ii + jj*params.nx].speeds[5]
+                      + halo_temp[ii + jj*params.nx].speeds[8]
+                      - (halo_temp[ii + jj*params.nx].speeds[3]
+                         + halo_temp[ii + jj*params.nx].speeds[6]
+                         + halo_temp[ii + jj*params.nx].speeds[7]))
                      / local_density;
         /* compute y velocity component */
-        float u_y = (tmp_cells[ii + jj*params.nx].speeds[2]
-                      + tmp_cells[ii + jj*params.nx].speeds[5]
-                      + tmp_cells[ii + jj*params.nx].speeds[6]
-                      - (tmp_cells[ii + jj*params.nx].speeds[4]
-                         + tmp_cells[ii + jj*params.nx].speeds[7]
-                         + tmp_cells[ii + jj*params.nx].speeds[8]))
+        float u_y = (halo_temp[ii + jj*params.nx].speeds[2]
+                      + halo_temp[ii + jj*params.nx].speeds[5]
+                      + halo_temp[ii + jj*params.nx].speeds[6]
+                      - (halo_temp[ii + jj*params.nx].speeds[4]
+                         + halo_temp[ii + jj*params.nx].speeds[7]
+                         + halo_temp[ii + jj*params.nx].speeds[8]))
                      / local_density;
 
         /* velocity squared */
@@ -599,9 +601,9 @@ int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obs
         /* relaxation step */
         for (int kk = 0; kk < NSPEEDS; kk++)
         {
-          cells[ii + jj*params.nx].speeds[kk] = tmp_cells[ii + jj*params.nx].speeds[kk]
+          halo_cells[ii + (jj+1)*params.nx].speeds[kk] = halo_temp[ii + jj*params.nx].speeds[kk]
                                                   + params.omega
-                                                  * (d_equ[kk] - tmp_cells[ii + jj*params.nx].speeds[kk]);
+                                                  * (d_equ[kk] - halo_temp[ii + jj*params.nx].speeds[kk]);
         }
       }
     }
