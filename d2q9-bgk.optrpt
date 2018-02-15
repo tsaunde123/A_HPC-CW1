@@ -10,242 +10,252 @@ Begin optimization report for: main(int, char **)
 INLINE REPORT: (main(int, char **))
   -> INLINE: (159,5) usage(const char *)
   -> INLINE: (193,3) initialise(const char *, const char *, t_param *, t_speed **, t_speed **, int **, float **)
-    -> INLINE: (725,5) die(const char *, const int, const char *)
-    -> INLINE: (731,20) die(const char *, const int, const char *)
-    -> INLINE: (735,20) die(const char *, const int, const char *)
-    -> INLINE: (739,20) die(const char *, const int, const char *)
-    -> INLINE: (743,20) die(const char *, const int, const char *)
-    -> INLINE: (747,20) die(const char *, const int, const char *)
-    -> INLINE: (751,20) die(const char *, const int, const char *)
-    -> INLINE: (755,20) die(const char *, const int, const char *)
-    -> INLINE: (783,29) die(const char *, const int, const char *)
-    -> INLINE: (788,33) die(const char *, const int, const char *)
-    -> INLINE: (793,33) die(const char *, const int, const char *)
-    -> INLINE: (834,5) die(const char *, const int, const char *)
-    -> INLINE: (841,22) die(const char *, const int, const char *)
-    -> INLINE: (843,40) die(const char *, const int, const char *)
-    -> INLINE: (845,40) die(const char *, const int, const char *)
-    -> INLINE: (847,23) die(const char *, const int, const char *)
+    -> INLINE: (703,5) die(const char *, const int, const char *)
+    -> INLINE: (709,20) die(const char *, const int, const char *)
+    -> INLINE: (713,20) die(const char *, const int, const char *)
+    -> INLINE: (717,20) die(const char *, const int, const char *)
+    -> INLINE: (721,20) die(const char *, const int, const char *)
+    -> INLINE: (725,20) die(const char *, const int, const char *)
+    -> INLINE: (729,20) die(const char *, const int, const char *)
+    -> INLINE: (733,20) die(const char *, const int, const char *)
+    -> INLINE: (761,29) die(const char *, const int, const char *)
+    -> INLINE: (766,33) die(const char *, const int, const char *)
+    -> INLINE: (771,33) die(const char *, const int, const char *)
+    -> INLINE: (812,5) die(const char *, const int, const char *)
+    -> INLINE: (819,22) die(const char *, const int, const char *)
+    -> INLINE: (821,40) die(const char *, const int, const char *)
+    -> INLINE: (823,40) die(const char *, const int, const char *)
+    -> INLINE: (825,23) die(const char *, const int, const char *)
   -> INLINE: (197,17) calc_ncols_from_rank(int, int, int)
   -> INLINE: (205,18) calc_ncols_from_rank(int, int, int)
   -> INLINE: (207,15) calc_ncols_from_rank(int, int, int)
-  -> INLINE: (276,5) timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int)
-    -> INLINE: (341,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
-    -> INLINE: (345,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
-    -> (349,3) propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int)
-    -> INLINE: (350,3) rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int)
-    -> (351,3) collision(const t_param, t_speed *, t_speed *, int *)
-  -> INLINE: (277,19) av_velocity(const t_param, t_speed *, int *)
-  -> INLINE: (325,41) calc_reynolds(const t_param, t_speed *, int *)
-    -> INLINE: (905,10) av_velocity(const t_param, t_speed *, int *)
-  -> INLINE: (329,3) write_values(const t_param, t_speed *, int *, float *)
-    -> INLINE: (940,5) die(const char *, const int, const char *)
-    -> INLINE: (996,5) die(const char *, const int, const char *)
-  -> INLINE: (330,3) finalise(const t_param *, t_speed **, t_speed **, int **, float **)
+  -> INLINE: (277,5) timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *)
+    -> INLINE: (342,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
+    -> INLINE: (346,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
+    -> INLINE: (350,3) propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int, t_speed *)
+    -> INLINE: (351,3) rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int, t_speed *)
+    -> (352,3) collision(const t_param, t_speed *, t_speed *, int *)
+  -> INLINE: (278,19) av_velocity(const t_param, t_speed *, int *)
+  -> INLINE: (326,41) calc_reynolds(const t_param, t_speed *, int *)
+    -> INLINE: (883,10) av_velocity(const t_param, t_speed *, int *)
+  -> INLINE: (330,3) write_values(const t_param, t_speed *, int *, float *)
+    -> INLINE: (918,5) die(const char *, const int, const char *)
+    -> INLINE: (974,5) die(const char *, const int, const char *)
+  -> INLINE: (331,3) finalise(const t_param *, t_speed **, t_speed **, int **, float **)
 
 
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(800,3) inlined into d2q9-bgk.c(193,3)
+LOOP BEGIN at d2q9-bgk.c(778,3) inlined into d2q9-bgk.c(193,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(802,5) inlined into d2q9-bgk.c(193,3)
+   LOOP BEGIN at d2q9-bgk.c(780,5) inlined into d2q9-bgk.c(193,3)
       remark #25439: unrolled with remainder by 2  
 
-      LOOP BEGIN at d2q9-bgk.c(812,9) inlined into d2q9-bgk.c(193,3)
+      LOOP BEGIN at d2q9-bgk.c(790,9) inlined into d2q9-bgk.c(193,3)
          remark #15301: MATERIALIZED LOOP WAS VECTORIZED
       LOOP END
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5) inlined into d2q9-bgk.c(193,3)
+   LOOP BEGIN at d2q9-bgk.c(780,5) inlined into d2q9-bgk.c(193,3)
    <Remainder>
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(820,3) inlined into d2q9-bgk.c(193,3)
+LOOP BEGIN at d2q9-bgk.c(798,3) inlined into d2q9-bgk.c(193,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(822,5) inlined into d2q9-bgk.c(193,3)
+   LOOP BEGIN at d2q9-bgk.c(800,5) inlined into d2q9-bgk.c(193,3)
       remark #25408: memset generated
 
-      LOOP BEGIN at d2q9-bgk.c(822,5) inlined into d2q9-bgk.c(193,3)
+      LOOP BEGIN at d2q9-bgk.c(800,5) inlined into d2q9-bgk.c(193,3)
       <Peeled loop for vectorization>
       LOOP END
 
-      LOOP BEGIN at d2q9-bgk.c(822,5) inlined into d2q9-bgk.c(193,3)
+      LOOP BEGIN at d2q9-bgk.c(800,5) inlined into d2q9-bgk.c(193,3)
          remark #15300: LOOP WAS VECTORIZED
       LOOP END
 
-      LOOP BEGIN at d2q9-bgk.c(822,5) inlined into d2q9-bgk.c(193,3)
+      LOOP BEGIN at d2q9-bgk.c(800,5) inlined into d2q9-bgk.c(193,3)
       <Remainder loop for vectorization>
       LOOP END
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(221,5)
+LOOP BEGIN at d2q9-bgk.c(222,5)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(225,9)
+   LOOP BEGIN at d2q9-bgk.c(226,9)
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(225,9)
+   LOOP BEGIN at d2q9-bgk.c(226,9)
    <Remainder>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(235,9)
+   LOOP BEGIN at d2q9-bgk.c(236,9)
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(235,9)
+   LOOP BEGIN at d2q9-bgk.c(236,9)
    <Remainder>
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(249,7)
+LOOP BEGIN at d2q9-bgk.c(250,7)
    remark #25439: unrolled with remainder by 2  
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(249,7)
+LOOP BEGIN at d2q9-bgk.c(250,7)
 <Remainder>
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(253,7)
+LOOP BEGIN at d2q9-bgk.c(254,7)
    remark #25399: memcopy generated
 
-   LOOP BEGIN at d2q9-bgk.c(253,7)
+   LOOP BEGIN at d2q9-bgk.c(254,7)
    <Peeled loop for vectorization>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(253,7)
+   LOOP BEGIN at d2q9-bgk.c(254,7)
       remark #15300: LOOP WAS VECTORIZED
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(253,7)
+   LOOP BEGIN at d2q9-bgk.c(254,7)
    <Alternate Alignment Vectorized Loop>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(253,7)
+   LOOP BEGIN at d2q9-bgk.c(254,7)
    <Remainder loop for vectorization>
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(260,7)
+LOOP BEGIN at d2q9-bgk.c(261,7)
    remark #25439: unrolled with remainder by 2  
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(260,7)
+LOOP BEGIN at d2q9-bgk.c(261,7)
 <Remainder>
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(264,7)
+LOOP BEGIN at d2q9-bgk.c(265,7)
    remark #25399: memcopy generated
 
-   LOOP BEGIN at d2q9-bgk.c(264,7)
+   LOOP BEGIN at d2q9-bgk.c(265,7)
    <Peeled loop for vectorization>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(264,7)
+   LOOP BEGIN at d2q9-bgk.c(265,7)
       remark #15300: LOOP WAS VECTORIZED
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(264,7)
+   LOOP BEGIN at d2q9-bgk.c(265,7)
    <Alternate Alignment Vectorized Loop>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(264,7)
+   LOOP BEGIN at d2q9-bgk.c(265,7)
    <Remainder loop for vectorization>
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(274,3)
+LOOP BEGIN at d2q9-bgk.c(275,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(386,3) inlined into d2q9-bgk.c(276,5)
+   LOOP BEGIN at d2q9-bgk.c(387,3) inlined into d2q9-bgk.c(277,5)
       remark #25460: No loop optimizations reported
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(386,3) inlined into d2q9-bgk.c(276,5)
+   LOOP BEGIN at d2q9-bgk.c(387,3) inlined into d2q9-bgk.c(277,5)
       remark #25460: No loop optimizations reported
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(500,3) inlined into d2q9-bgk.c(276,5)
+   LOOP BEGIN at d2q9-bgk.c(440,3) inlined into d2q9-bgk.c(277,5)
+      remark #25261: Invariant Condition eliminated(Proven True) at line 447
+
+      LOOP BEGIN at d2q9-bgk.c(442,5) inlined into d2q9-bgk.c(277,5)
+         remark #25427: Loop Statements Reordered
+         remark #25258: Invariant Condition eliminated(Loop at level 3 peeled) at line 447 
+         remark #25260: Invariant Condition eliminated(Proven False) at line 447
+      LOOP END
+   LOOP END
+
+   LOOP BEGIN at d2q9-bgk.c(489,3) inlined into d2q9-bgk.c(277,5)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(502,5) inlined into d2q9-bgk.c(276,5)
+      LOOP BEGIN at d2q9-bgk.c(491,5) inlined into d2q9-bgk.c(277,5)
          remark #25460: No loop optimizations reported
       LOOP END
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(644,3) inlined into d2q9-bgk.c(277,19)
+   LOOP BEGIN at d2q9-bgk.c(622,3) inlined into d2q9-bgk.c(278,19)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(646,5) inlined into d2q9-bgk.c(277,19)
+      LOOP BEGIN at d2q9-bgk.c(624,5) inlined into d2q9-bgk.c(278,19)
          remark #25460: No loop optimizations reported
 
-         LOOP BEGIN at d2q9-bgk.c(654,9) inlined into d2q9-bgk.c(277,19)
+         LOOP BEGIN at d2q9-bgk.c(632,9) inlined into d2q9-bgk.c(278,19)
             remark #25436: completely unrolled by 9  
          LOOP END
       LOOP END
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(287,7)
+LOOP BEGIN at d2q9-bgk.c(288,7)
    remark #25439: unrolled with remainder by 2  
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(287,7)
+LOOP BEGIN at d2q9-bgk.c(288,7)
 <Remainder>
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(292,7)
+LOOP BEGIN at d2q9-bgk.c(293,7)
    remark #25439: unrolled with remainder by 2  
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(292,7)
+LOOP BEGIN at d2q9-bgk.c(293,7)
 <Remainder>
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(299,5)
+LOOP BEGIN at d2q9-bgk.c(300,5)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(302,9)
+   LOOP BEGIN at d2q9-bgk.c(303,9)
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(302,9)
+   LOOP BEGIN at d2q9-bgk.c(303,9)
    <Remainder>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(307,9)
+   LOOP BEGIN at d2q9-bgk.c(308,9)
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(307,9)
+   LOOP BEGIN at d2q9-bgk.c(308,9)
    <Remainder>
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(644,3) inlined into d2q9-bgk.c(325,41)
+LOOP BEGIN at d2q9-bgk.c(622,3) inlined into d2q9-bgk.c(326,41)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(646,5) inlined into d2q9-bgk.c(325,41)
+   LOOP BEGIN at d2q9-bgk.c(624,5) inlined into d2q9-bgk.c(326,41)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(654,9) inlined into d2q9-bgk.c(325,41)
+      LOOP BEGIN at d2q9-bgk.c(632,9) inlined into d2q9-bgk.c(326,41)
          remark #25436: completely unrolled by 9  
       LOOP END
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(943,3) inlined into d2q9-bgk.c(329,3)
+LOOP BEGIN at d2q9-bgk.c(921,3) inlined into d2q9-bgk.c(330,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(945,5) inlined into d2q9-bgk.c(329,3)
+   LOOP BEGIN at d2q9-bgk.c(923,5) inlined into d2q9-bgk.c(330,3)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(958,9) inlined into d2q9-bgk.c(329,3)
+      LOOP BEGIN at d2q9-bgk.c(936,9) inlined into d2q9-bgk.c(330,3)
          remark #25436: completely unrolled by 9   (pre-vector) 
       LOOP END
    LOOP END
@@ -253,35 +263,34 @@ LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(824,9):remark #34026: call to memset implemented as a call to optimized library version
-d2q9-bgk.c(226,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(226,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(226,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(236,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(236,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(236,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(250,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(250,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(250,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(254,9):remark #34026: call to memcpy implemented as a call to optimized library version
-d2q9-bgk.c(261,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(261,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(261,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(265,9):remark #34026: call to memcpy implemented as a call to optimized library version
-d2q9-bgk.c(349,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (16, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(351,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (16, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(288,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(288,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(288,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(293,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(293,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(293,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(303,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(303,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(303,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(308,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(308,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(308,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(802,9):remark #34026: call to memset implemented as a call to optimized library version
+d2q9-bgk.c(227,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(227,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(227,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(237,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(237,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(237,26):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(251,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(251,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(251,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(255,9):remark #34026: call to memcpy implemented as a call to optimized library version
+d2q9-bgk.c(262,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(262,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(262,47):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(266,9):remark #34026: call to memcpy implemented as a call to optimized library version
+d2q9-bgk.c(352,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (16, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(289,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(289,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(289,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(294,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(294,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(294,24):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(304,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(304,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(304,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(309,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(309,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(309,60):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (1, 0), and destination (alignment, offset): (1, 0)
 d2q9-bgk.c(131,1):remark #34051: REGISTER ALLOCATION : [main] d2q9-bgk.c:131
 
     Hardware registers
@@ -291,19 +300,19 @@ d2q9-bgk.c(131,1):remark #34051: REGISTER ALLOCATION : [main] d2q9-bgk.c:131
         Assigned     :   27[ rax rdx rcx rbx rsi rdi r8-r15 zmm0-zmm12]
         
     Routine temporaries
-        Total         :    1378
-            Global    :     269
-            Local     :    1109
-        Regenerable   :     391
-        Spilled       :      69
+        Total         :    1427
+            Global    :     281
+            Local     :    1146
+        Regenerable   :     393
+        Spilled       :      73
         
     Routine stack
         Variables     :    1316 bytes*
-            Reads     :      58 [1.13e+02 ~ 1.0%]
-            Writes    :      16 [4.40e+01 ~ 0.4%]
-        Spills        :     504 bytes*
-            Reads     :     198 [5.98e+02 ~ 5.5%]
-            Writes    :      78 [8.08e+01 ~ 0.7%]
+            Reads     :      55 [9.82e+01 ~ 0.6%]
+            Writes    :      16 [4.40e+01 ~ 0.3%]
+        Spills        :     528 bytes*
+            Reads     :     215 [6.71e+02 ~ 3.9%]
+            Writes    :      89 [2.06e+02 ~ 1.2%]
     
     Notes
     
@@ -323,21 +332,21 @@ INLINE REPORT: (collision(const t_param, t_speed *, t_speed *, int *))
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(543,3)
+LOOP BEGIN at d2q9-bgk.c(521,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(545,5)
+   LOOP BEGIN at d2q9-bgk.c(523,5)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(553,9)
+      LOOP BEGIN at d2q9-bgk.c(531,9)
          remark #25436: completely unrolled by 9  
       LOOP END
 
-      LOOP BEGIN at d2q9-bgk.c(608,9)
+      LOOP BEGIN at d2q9-bgk.c(586,9)
          remark #15301: MATERIALIZED LOOP WAS VECTORIZED
       LOOP END
 
-      LOOP BEGIN at d2q9-bgk.c(622,9)
+      LOOP BEGIN at d2q9-bgk.c(600,9)
          remark #25436: completely unrolled by 9  
       LOOP END
    LOOP END
@@ -345,7 +354,7 @@ LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(533,1):remark #34051: REGISTER ALLOCATION : [collision] d2q9-bgk.c:533
+d2q9-bgk.c(511,1):remark #34051: REGISTER ALLOCATION : [collision] d2q9-bgk.c:511
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -376,79 +385,42 @@ d2q9-bgk.c(533,1):remark #34051: REGISTER ALLOCATION : [collision] d2q9-bgk.c:53
 
 ===========================================================================
 
-Begin optimization report for: propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int)
+Begin optimization report for: timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *)
 
     Report from: Interprocedural optimizations [ipo]
 
-INLINE REPORT: (propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int))
+INLINE REPORT: (timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *))
+  -> INLINE: (342,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
+  -> INLINE: (346,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
+  -> INLINE: (350,3) propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int, t_speed *)
+  -> INLINE: (351,3) rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int, t_speed *)
+  -> (352,3) collision(const t_param, t_speed *, t_speed *, int *)
 
 
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(439,3)
+LOOP BEGIN at d2q9-bgk.c(440,3) inlined into d2q9-bgk.c(350,3)
+   remark #25261: Invariant Condition eliminated(Proven True) at line 447
+
+   LOOP BEGIN at d2q9-bgk.c(442,5) inlined into d2q9-bgk.c(350,3)
+      remark #25258: Invariant Condition eliminated(Loop at level 2 peeled) at line 447 
+      remark #25260: Invariant Condition eliminated(Proven False) at line 447
+   LOOP END
+LOOP END
+
+LOOP BEGIN at d2q9-bgk.c(489,3) inlined into d2q9-bgk.c(351,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(441,5)
+   LOOP BEGIN at d2q9-bgk.c(491,5) inlined into d2q9-bgk.c(351,3)
       remark #25460: No loop optimizations reported
-
-      LOOP BEGIN at d2q9-bgk.c(459,9)
-         remark #25436: completely unrolled by 9  
-      LOOP END
    LOOP END
 LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(413,1):remark #34051: REGISTER ALLOCATION : [propagate] d2q9-bgk.c:413
-
-    Hardware registers
-        Reserved     :    2[ rsp rip]
-        Available    :   39[ rax rdx rcx rbx rbp rsi rdi r8-r15 mm0-mm7 zmm0-zmm15]
-        Callee-save  :    6[ rbx rbp r12-r15]
-        Assigned     :   15[ rax rdx rcx rbx rbp rsi rdi r8-r15]
-        
-    Routine temporaries
-        Total         :     105
-            Global    :      35
-            Local     :      70
-        Regenerable   :       9
-        Spilled       :      18
-        
-    Routine stack
-        Variables     :       0 bytes*
-            Reads     :       0 [0.00e+00 ~ 0.0%]
-            Writes    :       0 [0.00e+00 ~ 0.0%]
-        Spills        :     128 bytes*
-            Reads     :      20 [5.21e+01 ~ 6.3%]
-            Writes    :      16 [2.11e+01 ~ 2.5%]
-    
-    Notes
-    
-        *Non-overlapping variables and spills may share stack space,
-         so the total stack size might be less than this.
-    
-
-===========================================================================
-
-Begin optimization report for: timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int)
-
-    Report from: Interprocedural optimizations [ipo]
-
-INLINE REPORT: (timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int))
-  -> INLINE: (341,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
-  -> INLINE: (345,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
-  -> (349,3) propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int)
-  -> (350,3) rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int)
-  -> (351,3) collision(const t_param, t_speed *, t_speed *, int *)
-
-
-    Report from: Code generation optimizations [cg]
-
-d2q9-bgk.c(349,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (8, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(350,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (8, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(351,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (8, 0), and destination (alignment, offset): (1, 0)
-d2q9-bgk.c(338,1):remark #34051: REGISTER ALLOCATION : [timestep] d2q9-bgk.c:338
+d2q9-bgk.c(352,3):remark #34000: call to memcpy implemented inline with loads and stores with proven source (alignment, offset): (8, 0), and destination (alignment, offset): (1, 0)
+d2q9-bgk.c(339,1):remark #34051: REGISTER ALLOCATION : [timestep] d2q9-bgk.c:339
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -457,70 +429,19 @@ d2q9-bgk.c(338,1):remark #34051: REGISTER ALLOCATION : [timestep] d2q9-bgk.c:338
         Assigned     :   24[ rax rdx rcx rbx rbp rsi rdi r8-r15 zmm0-zmm8]
         
     Routine temporaries
-        Total         :     124
-            Global    :      40
-            Local     :      84
-        Regenerable   :      31
-        Spilled       :       6
+        Total         :     211
+            Global    :      69
+            Local     :     142
+        Regenerable   :      26
+        Spilled       :      21
         
     Routine stack
         Variables     :       0 bytes*
             Reads     :       0 [0.00e+00 ~ 0.0%]
             Writes    :       0 [0.00e+00 ~ 0.0%]
-        Spills        :       0 bytes*
-            Reads     :       0 [0.00e+00 ~ 0.0%]
-            Writes    :       0 [0.00e+00 ~ 0.0%]
-    
-    Notes
-    
-        *Non-overlapping variables and spills may share stack space,
-         so the total stack size might be less than this.
-    
-
-===========================================================================
-
-Begin optimization report for: rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int)
-
-    Report from: Interprocedural optimizations [ipo]
-
-INLINE REPORT: (rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int))
-
-
-    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
-
-
-LOOP BEGIN at d2q9-bgk.c(500,3)
-   remark #25460: No loop optimizations reported
-
-   LOOP BEGIN at d2q9-bgk.c(502,5)
-      remark #25460: No loop optimizations reported
-   LOOP END
-LOOP END
-
-    Report from: Code generation optimizations [cg]
-
-d2q9-bgk.c(477,1):remark #34051: REGISTER ALLOCATION : [rebound] d2q9-bgk.c:477
-
-    Hardware registers
-        Reserved     :    2[ rsp rip]
-        Available    :   39[ rax rdx rcx rbx rbp rsi rdi r8-r15 mm0-mm7 zmm0-zmm15]
-        Callee-save  :    6[ rbx rbp r12-r15]
-        Assigned     :   15[ rax rdx rcx rbx rbp rsi rdi r8-r15]
-        
-    Routine temporaries
-        Total         :      66
-            Global    :      26
-            Local     :      40
-        Regenerable   :       5
-        Spilled       :      13
-        
-    Routine stack
-        Variables     :       0 bytes*
-            Reads     :       0 [0.00e+00 ~ 0.0%]
-            Writes    :       0 [0.00e+00 ~ 0.0%]
-        Spills        :     104 bytes*
-            Reads     :      13 [3.69e+01 ~ 6.3%]
-            Writes    :      13 [2.61e+01 ~ 4.5%]
+        Spills        :     112 bytes*
+            Reads     :      32 [4.39e+01 ~ 2.3%]
+            Writes    :      19 [2.37e+01 ~ 1.3%]
     
     Notes
     
@@ -539,7 +460,7 @@ INLINE REPORT: (accelerate_flow(const t_param, t_speed *, int *, t_speed *, int 
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(356,1):remark #34051: REGISTER ALLOCATION : [accelerate_flow] d2q9-bgk.c:356
+d2q9-bgk.c(357,1):remark #34051: REGISTER ALLOCATION : [accelerate_flow] d2q9-bgk.c:357
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -570,6 +491,98 @@ d2q9-bgk.c(356,1):remark #34051: REGISTER ALLOCATION : [accelerate_flow] d2q9-bg
 
 ===========================================================================
 
+Begin optimization report for: propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int, t_speed *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int, t_speed *))
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at d2q9-bgk.c(440,3)
+   remark #25261: Invariant Condition eliminated(Proven True) at line 447
+
+   LOOP BEGIN at d2q9-bgk.c(442,5)
+      remark #25258: Invariant Condition eliminated(Loop at level 2 peeled) at line 447 
+      remark #25260: Invariant Condition eliminated(Proven False) at line 447
+   LOOP END
+LOOP END
+
+    Report from: Code generation optimizations [cg]
+
+d2q9-bgk.c(414,1):remark #34051: REGISTER ALLOCATION : [propagate] d2q9-bgk.c:414
+
+    Hardware registers
+        Reserved     :    2[ rsp rip]
+        Available    :   39[ rax rdx rcx rbx rbp rsi rdi r8-r15 mm0-mm7 zmm0-zmm15]
+        Callee-save  :    6[ rbx rbp r12-r15]
+        Assigned     :   15[ rax rdx rcx rbx rbp rsi rdi r8-r15]
+        
+    Routine temporaries
+        Total         :     105
+            Global    :      31
+            Local     :      74
+        Regenerable   :       7
+        Spilled       :      15
+        
+    Routine stack
+        Variables     :       0 bytes*
+            Reads     :       0 [0.00e+00 ~ 0.0%]
+            Writes    :       0 [0.00e+00 ~ 0.0%]
+        Spills        :      96 bytes*
+            Reads     :      19 [4.52e+01 ~ 3.4%]
+            Writes    :      13 [3.13e+01 ~ 2.4%]
+    
+    Notes
+    
+        *Non-overlapping variables and spills may share stack space,
+         so the total stack size might be less than this.
+    
+
+===========================================================================
+
+Begin optimization report for: rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int, t_speed *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int, t_speed *))
+
+
+    Report from: Code generation optimizations [cg]
+
+d2q9-bgk.c(466,1):remark #34051: REGISTER ALLOCATION : [rebound] d2q9-bgk.c:466
+
+    Hardware registers
+        Reserved     :    2[ rsp rip]
+        Available    :   39[ rax rdx rcx rbx rbp rsi rdi r8-r15 mm0-mm7 zmm0-zmm15]
+        Callee-save  :    6[ rbx rbp r12-r15]
+        Assigned     :   14[ rax rdx rcx rbx rbp rsi rdi r8-r11 r13-r15]
+        
+    Routine temporaries
+        Total         :      44
+            Global    :      21
+            Local     :      23
+        Regenerable   :       6
+        Spilled       :       5
+        
+    Routine stack
+        Variables     :       0 bytes*
+            Reads     :       0 [0.00e+00 ~ 0.0%]
+            Writes    :       0 [0.00e+00 ~ 0.0%]
+        Spills        :      40 bytes*
+            Reads     :       5 [4.50e+00 ~ 0.9%]
+            Writes    :       5 [4.50e+00 ~ 0.9%]
+    
+    Notes
+    
+        *Non-overlapping variables and spills may share stack space,
+         so the total stack size might be less than this.
+    
+
+===========================================================================
+
 Begin optimization report for: av_velocity(const t_param, t_speed *, int *)
 
     Report from: Interprocedural optimizations [ipo]
@@ -580,13 +593,13 @@ INLINE REPORT: (av_velocity(const t_param, t_speed *, int *))
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(644,3)
+LOOP BEGIN at d2q9-bgk.c(622,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(646,5)
+   LOOP BEGIN at d2q9-bgk.c(624,5)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(654,9)
+      LOOP BEGIN at d2q9-bgk.c(632,9)
          remark #25436: completely unrolled by 9  
       LOOP END
    LOOP END
@@ -594,7 +607,7 @@ LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(636,1):remark #34051: REGISTER ALLOCATION : [av_velocity] d2q9-bgk.c:636
+d2q9-bgk.c(614,1):remark #34051: REGISTER ALLOCATION : [av_velocity] d2q9-bgk.c:614
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -634,7 +647,7 @@ INLINE REPORT: (calc_ncols_from_rank(int, int, int))
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(866,1):remark #34051: REGISTER ALLOCATION : [calc_ncols_from_rank] d2q9-bgk.c:866
+d2q9-bgk.c(844,1):remark #34051: REGISTER ALLOCATION : [calc_ncols_from_rank] d2q9-bgk.c:844
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -674,7 +687,7 @@ INLINE REPORT: (finalise(const t_param *, t_speed **, t_speed **, int **, float 
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(881,1):remark #34051: REGISTER ALLOCATION : [finalise] d2q9-bgk.c:881
+d2q9-bgk.c(859,1):remark #34051: REGISTER ALLOCATION : [finalise] d2q9-bgk.c:859
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -710,19 +723,19 @@ Begin optimization report for: calc_reynolds(const t_param, t_speed *, int *)
     Report from: Interprocedural optimizations [ipo]
 
 INLINE REPORT: (calc_reynolds(const t_param, t_speed *, int *))
-  -> INLINE: (905,10) av_velocity(const t_param, t_speed *, int *)
+  -> INLINE: (883,10) av_velocity(const t_param, t_speed *, int *)
 
 
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(644,3) inlined into d2q9-bgk.c(905,10)
+LOOP BEGIN at d2q9-bgk.c(622,3) inlined into d2q9-bgk.c(883,10)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(646,5) inlined into d2q9-bgk.c(905,10)
+   LOOP BEGIN at d2q9-bgk.c(624,5) inlined into d2q9-bgk.c(883,10)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(654,9) inlined into d2q9-bgk.c(905,10)
+      LOOP BEGIN at d2q9-bgk.c(632,9) inlined into d2q9-bgk.c(883,10)
          remark #25436: completely unrolled by 9  
       LOOP END
    LOOP END
@@ -730,7 +743,7 @@ LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(902,1):remark #34051: REGISTER ALLOCATION : [calc_reynolds] d2q9-bgk.c:902
+d2q9-bgk.c(880,1):remark #34051: REGISTER ALLOCATION : [calc_reynolds] d2q9-bgk.c:880
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -771,17 +784,17 @@ INLINE REPORT: (total_density(const t_param, t_speed *))
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(912,3)
+LOOP BEGIN at d2q9-bgk.c(890,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(914,5)
+   LOOP BEGIN at d2q9-bgk.c(892,5)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(916,7)
+      LOOP BEGIN at d2q9-bgk.c(894,7)
          remark #15300: LOOP WAS VECTORIZED
       LOOP END
 
-      LOOP BEGIN at d2q9-bgk.c(916,7)
+      LOOP BEGIN at d2q9-bgk.c(894,7)
       <Remainder loop for vectorization>
          remark #25436: completely unrolled by 1  
       LOOP END
@@ -790,7 +803,7 @@ LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(909,1):remark #34051: REGISTER ALLOCATION : [total_density] d2q9-bgk.c:909
+d2q9-bgk.c(887,1):remark #34051: REGISTER ALLOCATION : [total_density] d2q9-bgk.c:887
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -826,20 +839,20 @@ Begin optimization report for: write_values(const t_param, t_speed *, int *, flo
     Report from: Interprocedural optimizations [ipo]
 
 INLINE REPORT: (write_values(const t_param, t_speed *, int *, float *))
-  -> INLINE: (940,5) die(const char *, const int, const char *)
-  -> INLINE: (996,5) die(const char *, const int, const char *)
+  -> INLINE: (918,5) die(const char *, const int, const char *)
+  -> INLINE: (974,5) die(const char *, const int, const char *)
 
 
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(943,3)
+LOOP BEGIN at d2q9-bgk.c(921,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(945,5)
+   LOOP BEGIN at d2q9-bgk.c(923,5)
       remark #25460: No loop optimizations reported
 
-      LOOP BEGIN at d2q9-bgk.c(958,9)
+      LOOP BEGIN at d2q9-bgk.c(936,9)
          remark #25436: completely unrolled by 9   (pre-vector) 
       LOOP END
    LOOP END
@@ -847,7 +860,7 @@ LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(927,1):remark #34051: REGISTER ALLOCATION : [write_values] d2q9-bgk.c:927
+d2q9-bgk.c(905,1):remark #34051: REGISTER ALLOCATION : [write_values] d2q9-bgk.c:905
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -887,7 +900,7 @@ INLINE REPORT: (die(const char *, const int, const char *))
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(1010,1):remark #34051: REGISTER ALLOCATION : [die] d2q9-bgk.c:1010
+d2q9-bgk.c(988,1):remark #34051: REGISTER ALLOCATION : [die] d2q9-bgk.c:988
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -927,7 +940,7 @@ INLINE REPORT: (usage(const char *))
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(1018,1):remark #34051: REGISTER ALLOCATION : [usage] d2q9-bgk.c:1018
+d2q9-bgk.c(996,1):remark #34051: REGISTER ALLOCATION : [usage] d2q9-bgk.c:996
 
     Hardware registers
         Reserved     :    2[ rsp rip]
@@ -963,101 +976,101 @@ Begin optimization report for: initialise(const char *, const char *, t_param *,
     Report from: Interprocedural optimizations [ipo]
 
 INLINE REPORT: (initialise(const char *, const char *, t_param *, t_speed **, t_speed **, int **, float **))
-  -> INLINE: (725,5) die(const char *, const int, const char *)
-  -> INLINE: (731,20) die(const char *, const int, const char *)
-  -> INLINE: (735,20) die(const char *, const int, const char *)
-  -> INLINE: (739,20) die(const char *, const int, const char *)
-  -> INLINE: (743,20) die(const char *, const int, const char *)
-  -> INLINE: (747,20) die(const char *, const int, const char *)
-  -> INLINE: (751,20) die(const char *, const int, const char *)
-  -> INLINE: (755,20) die(const char *, const int, const char *)
-  -> INLINE: (783,29) die(const char *, const int, const char *)
-  -> INLINE: (788,33) die(const char *, const int, const char *)
-  -> INLINE: (793,33) die(const char *, const int, const char *)
-  -> INLINE: (834,5) die(const char *, const int, const char *)
-  -> INLINE: (841,22) die(const char *, const int, const char *)
-  -> INLINE: (843,40) die(const char *, const int, const char *)
-  -> INLINE: (845,40) die(const char *, const int, const char *)
-  -> INLINE: (847,23) die(const char *, const int, const char *)
+  -> INLINE: (703,5) die(const char *, const int, const char *)
+  -> INLINE: (709,20) die(const char *, const int, const char *)
+  -> INLINE: (713,20) die(const char *, const int, const char *)
+  -> INLINE: (717,20) die(const char *, const int, const char *)
+  -> INLINE: (721,20) die(const char *, const int, const char *)
+  -> INLINE: (725,20) die(const char *, const int, const char *)
+  -> INLINE: (729,20) die(const char *, const int, const char *)
+  -> INLINE: (733,20) die(const char *, const int, const char *)
+  -> INLINE: (761,29) die(const char *, const int, const char *)
+  -> INLINE: (766,33) die(const char *, const int, const char *)
+  -> INLINE: (771,33) die(const char *, const int, const char *)
+  -> INLINE: (812,5) die(const char *, const int, const char *)
+  -> INLINE: (819,22) die(const char *, const int, const char *)
+  -> INLINE: (821,40) die(const char *, const int, const char *)
+  -> INLINE: (823,40) die(const char *, const int, const char *)
+  -> INLINE: (825,23) die(const char *, const int, const char *)
 
 
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
 
 
-LOOP BEGIN at d2q9-bgk.c(800,3)
+LOOP BEGIN at d2q9-bgk.c(778,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Distributed chunk1>
       remark #25426: Loop Distributed (6 way) 
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Remainder, Distributed chunk1>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Distributed chunk2>
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Remainder, Distributed chunk2>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Distributed chunk3>
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Remainder, Distributed chunk3>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Distributed chunk4>
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Remainder, Distributed chunk4>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Distributed chunk5>
       remark #25439: unrolled with remainder by 2  
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Remainder, Distributed chunk5>
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Distributed chunk6>
       remark #25439: unrolled with remainder by 2  
 
-      LOOP BEGIN at d2q9-bgk.c(812,9)
+      LOOP BEGIN at d2q9-bgk.c(790,9)
          remark #15301: MATERIALIZED LOOP WAS VECTORIZED
       LOOP END
    LOOP END
 
-   LOOP BEGIN at d2q9-bgk.c(802,5)
+   LOOP BEGIN at d2q9-bgk.c(780,5)
    <Remainder, Distributed chunk6>
    LOOP END
 LOOP END
 
-LOOP BEGIN at d2q9-bgk.c(820,3)
+LOOP BEGIN at d2q9-bgk.c(798,3)
    remark #25460: No loop optimizations reported
 
-   LOOP BEGIN at d2q9-bgk.c(822,5)
+   LOOP BEGIN at d2q9-bgk.c(800,5)
       remark #25478: While Loop Unrolled by 8  
    LOOP END
 LOOP END
 
     Report from: Code generation optimizations [cg]
 
-d2q9-bgk.c(712,1):remark #34051: REGISTER ALLOCATION : [initialise] d2q9-bgk.c:712
+d2q9-bgk.c(690,1):remark #34051: REGISTER ALLOCATION : [initialise] d2q9-bgk.c:690
 
     Hardware registers
         Reserved     :    2[ rsp rip]

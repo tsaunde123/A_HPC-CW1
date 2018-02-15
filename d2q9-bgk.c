@@ -97,11 +97,11 @@ int calc_ncols_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size);
+int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
-            t_speed* halo_cells, int rank, int size, int nlr_nrows);
+            t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
 
@@ -210,6 +210,7 @@ int main(int argc, char* argv[])
   int halo_local_nrows = local_nrows + 2;
   int halo_local_ncols = local_ncols;
   int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+  t_speed* halo_temp = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
 
   t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
   t_speed* recvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
@@ -273,7 +274,7 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows);
+    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp);
     av_vels[tt] = av_velocity(params, cells, obstacles);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -334,7 +335,7 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp)
 {
   if(size == params.ny){
     if(rank == size-2){
@@ -346,8 +347,8 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
     }
   }
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
-  propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size);
-  rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows);
+  propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
+  rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
   collision(params, cells, tmp_cells, obstacles);
   return EXIT_SUCCESS;
 }
@@ -409,7 +410,7 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
 }
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
-              int halo_local_nrows, int halo_local_ncols, int rank, int size)
+              int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp)
 {
   /* loop over _all_ cells */
   /*for (int jj = 0; jj < params.ny; jj++)
@@ -445,27 +446,15 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
       int y_s = (jj+1) - 1;
       int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-      if(rank == size - 1){
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*nlr_nrows)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
-      } else {
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[1] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[1];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[2] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[2];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[3] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[3];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[4] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[4];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[5] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[5];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[6] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[6];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[7] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[7];
-        tmp_cells[(ii + jj*params.nx) + (rank*local_ncols*local_nrows)].speeds[8] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[8]; 
-      }
+      halo_temp[(ii + jj*params.nx)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
+      halo_temp[(ii + jj*params.nx)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
+      halo_temp[(ii + jj*params.nx)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+      halo_temp[(ii + jj*params.nx)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
+      halo_temp[(ii + jj*params.nx)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
+      halo_temp[(ii + jj*params.nx)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+      halo_temp[(ii + jj*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+      halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+      halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
     }
   }
 
@@ -473,7 +462,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
 }
 
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
-            t_speed* halo_cells, int rank, int size, int nlr_nrows)
+            t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp)
 {
   /* //loop over the cells in the grid
   for (int jj = 0; jj < params.ny; jj++)
@@ -503,25 +492,14 @@ int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obsta
     {
       if (halo_obs[jj*params.nx + ii])
       {
-        if(rank == size - 1){
-          halo_cells[ii + (jj+1)*params.nx].speeds[1] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[3];
-          halo_cells[ii + (jj+1)*params.nx].speeds[2] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[4];
-          halo_cells[ii + (jj+1)*params.nx].speeds[3] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[1];
-          halo_cells[ii + (jj+1)*params.nx].speeds[4] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[2];
-          halo_cells[ii + (jj+1)*params.nx].speeds[5] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[7];
-          halo_cells[ii + (jj+1)*params.nx].speeds[6] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[8];
-          halo_cells[ii + (jj+1)*params.nx].speeds[7] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[5];
-          halo_cells[ii + (jj+1)*params.nx].speeds[8] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*nlr_nrows)].speeds[6];
-        } else {
-          halo_cells[ii + (jj+1)*params.nx].speeds[1] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[3];
-          halo_cells[ii + (jj+1)*params.nx].speeds[2] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[4];
-          halo_cells[ii + (jj+1)*params.nx].speeds[3] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[1];
-          halo_cells[ii + (jj+1)*params.nx].speeds[4] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[2];
-          halo_cells[ii + (jj+1)*params.nx].speeds[5] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[7];
-          halo_cells[ii + (jj+1)*params.nx].speeds[6] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[8];
-          halo_cells[ii + (jj+1)*params.nx].speeds[7] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[5];
-          halo_cells[ii + (jj+1)*params.nx].speeds[8] = tmp_cells[ii + jj*params.nx + (rank*local_ncols*local_nrows)].speeds[6];
-        }
+        halo_cells[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + jj*params.nx].speeds[3];
+        halo_cells[ii + (jj+1)*params.nx].speeds[2] = halo_temp[ii + jj*params.nx].speeds[4];
+        halo_cells[ii + (jj+1)*params.nx].speeds[3] = halo_temp[ii + jj*params.nx].speeds[1];
+        halo_cells[ii + (jj+1)*params.nx].speeds[4] = halo_temp[ii + jj*params.nx].speeds[2];
+        halo_cells[ii + (jj+1)*params.nx].speeds[5] = halo_temp[ii + jj*params.nx].speeds[7];
+        halo_cells[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + jj*params.nx].speeds[8];
+        halo_cells[ii + (jj+1)*params.nx].speeds[7] = halo_temp[ii + jj*params.nx].speeds[5];
+        halo_cells[ii + (jj+1)*params.nx].speeds[8] = halo_temp[ii + jj*params.nx].speeds[6];
       }
     }
   }
