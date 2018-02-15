@@ -97,7 +97,8 @@ int calc_ncols_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
+ int bottom);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
@@ -105,6 +106,9 @@ int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obsta
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
               t_speed* halo_temp, t_speed* halo_cells);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
+
+/* Halo exchange method */
+void halo_ex(t_speed* halo_cells, int halo_local_ncols, int halo_local_nrows, MPI_Status status, int local_nrows, int local_ncols, int top, int bottom);
 
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
@@ -277,7 +281,7 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp);
+    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom);
     //av_vels[tt] = av_velocity(params, cells, obstacles);
     av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
@@ -339,7 +343,8 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top, 
+ int bottom)
 {
   if(size == params.ny){
     if(rank == size-2){
@@ -350,6 +355,9 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
       accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
   }
+
+  halo_ex(halo_cells, halo_local_ncols, halo_local_nrows, status, local_nrows, local_ncols, top, bottom);
+
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
   rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
@@ -726,13 +734,18 @@ float final_av_velocity(const t_param params, t_speed* cells, int* obstacles)
   return tot_u / (float)tot_cells;
 }
 
-/*void halo_ex(){
+void halo_ex(t_speed* halo_cells, int halo_local_ncols, int halo_local_nrows, MPI_Status status, int local_nrows, int local_ncols, int top,
+             int bottom)
+{
+  
+  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   //Send top, receive bottom
   for(int jj = 0; jj < halo_local_ncols; jj++){
     sendbuf[jj] = halo_cells[jj + (halo_local_ncols*local_nrows)];
   }
-  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, top, tag,
-                 recvbuf, halo_local_ncols, MPI_FLOAT, bottom, tag,
+  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, top, 0,
+                 recvbuf, halo_local_ncols, MPI_FLOAT, bottom, 0,
                  MPI_COMM_WORLD, &status);
   for(int jj = 0; jj < halo_local_ncols; jj++){
     halo_cells[jj] = recvbuf[jj];
@@ -741,13 +754,13 @@ float final_av_velocity(const t_param params, t_speed* cells, int* obstacles)
   for(int jj = 0; jj < halo_local_ncols; jj++){
     sendbuf[jj] = halo_cells[jj + (halo_local_ncols*1)];
   }
-  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, bottom, tag,
-                 recvbuf, halo_local_ncols, MPI_FLOAT, top, tag,
+  MPI_Sendrecv(sendbuf, halo_local_ncols, MPI_FLOAT, bottom, 0,
+                 recvbuf, halo_local_ncols, MPI_FLOAT, top, 0,
                  MPI_COMM_WORLD, &status);
   for(int jj = 0; jj < halo_local_ncols; jj++){
     halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuf[jj];
   }
-}*/
+}
 
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
