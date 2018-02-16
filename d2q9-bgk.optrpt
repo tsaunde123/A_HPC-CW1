@@ -13,10 +13,10 @@ INLINE REPORT: (main(int, char **))
   -> INLINE: (206,17) calc_ncols_from_rank(int, int, int)
   -> INLINE: (214,18) calc_ncols_from_rank(int, int, int)
   -> INLINE: (216,15) calc_ncols_from_rank(int, int, int)
-  -> INLINE: (288,5) timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *, MPI_Status, int, int)
+  -> INLINE: (288,5) timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *, MPI_Status, int, int, MPI_Datatype)
     -> INLINE: (368,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
     -> INLINE: (372,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
-    -> INLINE: (376,3) halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int)
+    -> INLINE: (376,3) halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int, MPI_Datatype)
     -> INLINE: (379,3) propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int, t_speed *)
     -> INLINE: (380,3) rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int, t_speed *)
     -> INLINE: (381,3) collision(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, t_speed *)
@@ -346,18 +346,18 @@ d2q9-bgk.c(140,1):remark #34051: REGISTER ALLOCATION : [main] d2q9-bgk.c:140
         
     Routine temporaries
         Total         :    1447
-            Global    :     289
-            Local     :    1158
-        Regenerable   :     203
+            Global    :     290
+            Local     :    1157
+        Regenerable   :     200
         Spilled       :      69
         
     Routine stack
         Variables     :     444 bytes*
-            Reads     :     101 [2.70e+02 ~ 1.1%]
+            Reads     :     102 [2.75e+02 ~ 1.1%]
             Writes    :      38 [1.18e+02 ~ 0.5%]
         Spills        :     512 bytes*
-            Reads     :     197 [7.02e+02 ~ 2.8%]
-            Writes    :      87 [2.67e+02 ~ 1.1%]
+            Reads     :     195 [6.93e+02 ~ 2.7%]
+            Writes    :      86 [2.67e+02 ~ 1.1%]
     
     Notes
     
@@ -367,14 +367,14 @@ d2q9-bgk.c(140,1):remark #34051: REGISTER ALLOCATION : [main] d2q9-bgk.c:140
 
 ===========================================================================
 
-Begin optimization report for: timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *, MPI_Status, int, int)
+Begin optimization report for: timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *, MPI_Status, int, int, MPI_Datatype)
 
     Report from: Interprocedural optimizations [ipo]
 
-INLINE REPORT: (timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *, MPI_Status, int, int))
+INLINE REPORT: (timestep(const t_param, t_speed *, t_speed *, int *, t_speed *, int *, int, int, int, int, int, int, int, t_speed *, MPI_Status, int, int, MPI_Datatype))
   -> INLINE: (368,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
   -> INLINE: (372,7) accelerate_flow(const t_param, t_speed *, int *, t_speed *, int *, int)
-  -> INLINE: (376,3) halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int)
+  -> INLINE: (376,3) halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int, MPI_Datatype)
   -> INLINE: (379,3) propagate(const t_param, t_speed *, t_speed *, t_speed *, int, int, int, int, int, int, int, t_speed *)
   -> INLINE: (380,3) rebound(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, int, int, int, t_speed *)
   -> (381,3) collision(const t_param, t_speed *, t_speed *, int *, int, int, int *, t_speed *, t_speed *)
@@ -458,8 +458,8 @@ d2q9-bgk.c(365,1):remark #34051: REGISTER ALLOCATION : [timestep] d2q9-bgk.c:365
         
     Routine temporaries
         Total         :     361
-            Global    :      96
-            Local     :     265
+            Global    :      97
+            Local     :     264
         Regenerable   :      43
         Spilled       :      24
         
@@ -784,11 +784,11 @@ d2q9-bgk.c(712,1):remark #34051: REGISTER ALLOCATION : [final_av_velocity] d2q9-
 
 ===========================================================================
 
-Begin optimization report for: halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int)
+Begin optimization report for: halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int, MPI_Datatype)
 
     Report from: Interprocedural optimizations [ipo]
 
-INLINE REPORT: (halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int))
+INLINE REPORT: (halo_ex(t_speed *, int, int, MPI_Status, int, int, int, int, MPI_Datatype))
 
 
     Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
@@ -850,18 +850,18 @@ d2q9-bgk.c(756,1):remark #34051: REGISTER ALLOCATION : [halo_ex] d2q9-bgk.c:756
         
     Routine temporaries
         Total         :     165
-            Global    :      37
-            Local     :     128
-        Regenerable   :       9
-        Spilled       :      11
+            Global    :      38
+            Local     :     127
+        Regenerable   :       6
+        Spilled       :      12
         
     Routine stack
         Variables     :       0 bytes*
             Reads     :       0 [0.00e+00 ~ 0.0%]
             Writes    :       0 [0.00e+00 ~ 0.0%]
-        Spills        :      40 bytes*
-            Reads     :       6 [6.00e+00 ~ 1.5%]
-            Writes    :       5 [5.00e+00 ~ 1.2%]
+        Spills        :      48 bytes*
+            Reads     :       8 [8.00e+00 ~ 2.0%]
+            Writes    :       6 [6.00e+00 ~ 1.5%]
     
     Notes
     
