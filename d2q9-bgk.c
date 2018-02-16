@@ -64,6 +64,7 @@
 #define MASTER          0
 #define NTYPES          1  /* the number of intrinsic types in our derived type */
 
+
 /* struct to hold the parameter values */
 typedef struct
 {
@@ -89,7 +90,7 @@ typedef struct
 /* load params, allocate memory, load obstacles & initialise fluid particle densities */
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, float** av_vels_ptr);
+               int** obstacles_ptr, float** av_vels_ptr, int rank);
 
 int calc_ncols_from_rank(int rank, int size, int numRows);
 
@@ -198,7 +199,7 @@ int main(int argc, char* argv[])
 
 
   /* initialise our data structures and load values from file */
-  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels, rank);
 
   int top = (rank + 1) % size;
   int bottom = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
@@ -227,11 +228,9 @@ int main(int argc, char* argv[])
 
   if(rank == MASTER){
     for(int jj = 0; jj < local_ncols*local_nrows; jj++){
-      sendcbuf[jj] = cells[jj + (rank*(local_nrows*local_ncols))];
-      sendobuf[jj] = obstacles[jj + (rank*(local_nrows*local_ncols))];
+      halo_cells[jj+(1*local_ncols)] = cells[jj + (rank*(local_nrows*local_ncols))];
+      halo_obs[jj] = obstacles[jj + (rank*(local_nrows*local_ncols))];
     }
-    memcpy(halo_cells+(1*local_ncols), sendcbuf, local_nrows*local_ncols);
-    memcpy(halo_obs, sendobuf, local_nrows*local_ncols);
     //memcpy( void* dest, const void* src, std::size_t count );
     for(int dest = 1; dest < size; dest++){
       if(dest == size-1){
@@ -243,7 +242,6 @@ int main(int argc, char* argv[])
         }
         MPI_Send(sendcbuf, remote_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
         MPI_Send(sendobuf, remote_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
-        printf("Sent \n");
       } else{
         // t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
         // int* sendobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
@@ -259,12 +257,11 @@ int main(int argc, char* argv[])
     if(rank == size-1){
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
       // int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
-      MPI_Recv(recvcbuf, remote_nrows*halo_local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
-      printf("Received \n");
-      for(int jj = 0; jj < halo_local_nrows * halo_local_ncols; jj++){
+      MPI_Recv(recvcbuf, remote_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
+      for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
       }
-      MPI_Recv(recvobuf, remote_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+      MPI_Recv(recvobuf, remote_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < local_nrows*local_ncols; jj++){
         halo_obs[jj] = recvobuf[jj];
       }
@@ -272,7 +269,7 @@ int main(int argc, char* argv[])
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
       // int* rcvobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
       MPI_Recv(recvcbuf,local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int jj = 0; jj < halo_local_nrows * halo_local_ncols; jj++){
+      for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
       }
       MPI_Recv(recvobuf, local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
@@ -317,11 +314,8 @@ int main(int argc, char* argv[])
     }
   } else {
     for(int jj = 0; jj < local_ncols*local_nrows; jj++){
-      sendcbuf[jj] = halo_cells[jj + 1*local_ncols];
-      sendobuf[jj] = halo_obs[jj + 1*local_ncols];
+      cells[jj] = halo_cells[jj + 1*local_ncols];
     }
-    memcpy(cells, sendcbuf, local_nrows*local_ncols);
-    memcpy(obstacles, sendobuf, local_nrows*local_ncols);
     for(int source = 1; source < size; source++){
       if(source == size - 1){
         MPI_Recv(recvcbuf, remote_nrows*local_ncols, MPI_cell_type, source, tag, MPI_COMM_WORLD, &status);
@@ -351,12 +345,14 @@ int main(int argc, char* argv[])
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   /* write final values and free memory */
-  printf("==done==\n");
-  printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, cells, obstacles));
-  printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
-  printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
-  printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
-  write_values(params, cells, obstacles, av_vels);
+  if(rank == MASTER){
+    printf("==done==\n");
+    printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, cells, obstacles));
+    printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
+    printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
+    printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
+    write_values(params, cells, obstacles, av_vels);
+  }
   finalise(&params, &cells, &tmp_cells, &obstacles, &av_vels);
 
   MPI_Finalize();
@@ -393,7 +389,7 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   float w2 = params.density * params.accel / 36.f;
 
   /* modify the 2nd row of the grid */
-  int h_jj = (local_nrows - 1) - 2;
+  int h_jj = local_nrows - 1;
   int o_jj = local_nrows - 2;
   int jj = params.ny-2;
 
@@ -656,12 +652,12 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
   tot_u = 0.f;
 
   /* loop over all non-blocked cells */
-  for (int jj = 0; jj < local_nrows; jj++)
+  for (int jj = 1; jj < local_nrows+1; jj++)
   {
     for (int ii = 0; ii < local_ncols; ii++)
     {
       /* ignore occupied cells */
-      if (!halo_obs[ii + jj*params.nx])
+      if (!halo_obs[ii + (jj-1)*params.nx])
       {
         /* local density total */
         float local_density = 0.f;
@@ -708,7 +704,7 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
     MPI_Send(&tot_cells, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
   }
 
- return 0.f;
+ return 0;
 
 }
 
@@ -785,7 +781,7 @@ void halo_ex(t_speed* halo_cells, int halo_local_ncols, int halo_local_nrows, MP
 
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, float** av_vels_ptr)
+               int** obstacles_ptr, float** av_vels_ptr, int rank)
 {
   char   message[1024];  /* message buffer */
   FILE*   fp;            /* file pointer */
@@ -853,7 +849,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
   ** a 1D array of these structs.
   */
 
-
+//  if(rank == MASTER){
     /* main grid */
     *cells_ptr = (t_speed*)malloc(sizeof(t_speed) * (params->ny * params->nx));
 
@@ -929,6 +925,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
 
   /* and close the file */
   fclose(fp);
+
 
   /*
   ** allocate space to hold a record of the avarage velocities computed
