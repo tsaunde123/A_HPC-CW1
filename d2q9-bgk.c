@@ -706,6 +706,17 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
     MPI_Send(&tot_cells, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
   }
 
+  /*int global_tot_cells;
+  float global_tot_u;
+
+  // Reduce all of the local sums into the global sum
+  MPI_Reduce(&tot_u, &global_tot_u, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&tot_cells, &global_tot_cells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  if(rank == MASTER){
+    return global_tot_u / global_tot_cells;
+  }*/
+
  return 0;
 
 }
