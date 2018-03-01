@@ -107,6 +107,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status,
               MPI_Datatype MPI_cell_type, int top, int bottom, MPI_Request	send_top_request, MPI_Request recv_top_request, MPI_Request send_bottom_request,
               MPI_Request recv_bottom_request, t_speed* recvbuftop, t_speed* recvbufbottom);
+int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+              int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status,
+              MPI_Datatype MPI_cell_type, int top, int bottom, MPI_Request	send_top_request, MPI_Request recv_top_request, MPI_Request send_bottom_request,
+              MPI_Request recv_bottom_request, t_speed* recvbuftop, t_speed* recvbufbottom);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
@@ -395,6 +399,22 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
   propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
                 halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request,recv_top_request,send_bottom_request,recv_bottom_request,
                 recvbuftop, recvbufbottom);
+
+  MPI_Wait(&send_top_request, &status);
+  MPI_Wait(&recv_bottom_request, &status);
+  MPI_Wait(&send_bottom_request, &status);
+  MPI_Wait(&recv_top_request, &status);
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj] = recvbufbottom[jj];
+  }
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuftop[jj];
+  }
+
+  propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
+                halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request,recv_top_request,send_bottom_request,recv_bottom_request,
+                recvbuftop, recvbufbottom);
+
   rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
   collision(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_temp, halo_cells);
   return EXIT_SUCCESS;
@@ -591,18 +611,14 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     }
   }
 
-  MPI_Wait(&send_top_request, &status);
-  MPI_Wait(&recv_bottom_request, &status);
-  MPI_Wait(&send_bottom_request, &status);
-  MPI_Wait(&recv_top_request, &status);
-  for(int jj = 0; jj < halo_local_ncols; jj++){
-    halo_cells[jj] = recvbufbottom[jj];
-  }
-  for(int jj = 0; jj < halo_local_ncols; jj++){
-    halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuftop[jj];
-  }
+  return EXIT_SUCCESS;
+}
 
-
+int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+              int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status,
+              MPI_Datatype MPI_cell_type, int top, int bottom, MPI_Request	send_top_request, MPI_Request recv_top_request, MPI_Request send_bottom_request,
+              MPI_Request recv_bottom_request, t_speed* recvbuftop, t_speed* recvbufbottom)
+{
   int jj = 0;
   for(int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
