@@ -238,11 +238,12 @@ int main(int argc, char* argv[])
         MPI_Send(sendcbuf, extra_local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
         MPI_Send(sendobuf, extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
       } else{
+        not_extra_local_nrows = calc_ncols_from_rank(dest, size, params.ny);
         // t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
         // int* sendobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
         for(int jj = 0; jj < not_extra_local_nrows * local_ncols; jj++){
-          sendcbuf[jj] = cells[jj + ((rest*extra_local_nrows) + (dest-rest)*(not_extra_local_nrows*local_nrows))];
-          sendobuf[jj] = obstacles[jj + ((rest*extra_local_nrows) + (dest-rest)*(not_extra_local_nrows*local_nrows))];
+          sendcbuf[jj] = cells[jj + ((rest*extra_local_nrows*local_ncols) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
+          sendobuf[jj] = obstacles[jj + ((rest*extra_local_nrows*local_ncols) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
         }
         MPI_Send(sendcbuf, not_extra_local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
         MPI_Send(sendobuf, not_extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
@@ -290,6 +291,14 @@ int main(int argc, char* argv[])
 #endif
   }
 
+  gettimeofday(&timstr, NULL);
+  toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  getrusage(RUSAGE_SELF, &ru);
+  timstr = ru.ru_utime;
+  usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  timstr = ru.ru_stime;
+  systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+
   if(rank != MASTER){
     if(rank < rest){
       for(int jj = 0; jj < extra_local_nrows * local_ncols; jj++){
@@ -299,12 +308,12 @@ int main(int argc, char* argv[])
       MPI_Send(sendcbuf, extra_local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD);
       MPI_Send(sendobuf, extra_local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD);
     } else {
-      for(int jj = 0; jj < not_extra_local_nrows * local_ncols; jj++){
+      for(int jj = 0; jj < local_nrows * local_ncols; jj++){
         sendcbuf[jj] = halo_cells[jj + 1*local_ncols];
         sendobuf[jj] = halo_obs[jj + 1*local_ncols];
       }
-      MPI_Send(sendcbuf, not_extra_local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD);
-      MPI_Send(sendobuf, not_extra_local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD);
+      MPI_Send(sendcbuf, local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD);
+      MPI_Send(sendobuf, local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD);
 
     }
   } else {
@@ -320,24 +329,17 @@ int main(int argc, char* argv[])
           obstacles[jj + (source*(local_nrows*local_ncols))] = recvobuf[jj];
         }
       } else {
+        not_extra_local_nrows = calc_ncols_from_rank(source, size, params.ny);
         MPI_Recv(recvcbuf, not_extra_local_nrows*local_ncols, MPI_cell_type, source, tag, MPI_COMM_WORLD, &status);
         MPI_Recv(recvobuf, not_extra_local_nrows*local_ncols, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
         for(int jj = 0; jj < not_extra_local_nrows*local_ncols; jj++){
-          cells[jj + ((rest*extra_local_nrows) + (source-rest)*(not_extra_local_nrows*local_nrows))] = recvcbuf[jj];
-          obstacles[jj + ((rest*extra_local_nrows) + (source-rest)*(not_extra_local_nrows*local_nrows))] = recvobuf[jj];
+          cells[jj + ((rest*extra_local_nrows*local_ncols) + (source-rest)*(not_extra_local_nrows*local_ncols))] = recvcbuf[jj];
+          obstacles[jj + ((rest*extra_local_nrows*local_ncols) + (source-rest)*(not_extra_local_nrows*local_ncols))] = recvobuf[jj];
         }
       }
     }
   }
 
-
-  gettimeofday(&timstr, NULL);
-  toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  getrusage(RUSAGE_SELF, &ru);
-  timstr = ru.ru_utime;
-  usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  timstr = ru.ru_stime;
-  systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   /* write final values and free memory */
   if(rank == MASTER){
@@ -948,10 +950,9 @@ int calc_ncols_from_rank(int rank, int size, int numRows)
 
   int rest = numRows % size;
   nrows = numRows / size;       /* integer division */
-  if (rest != 0) {  /* if there is a remainder */
-    if (rank < rest)
-      nrows += 1;  /* distrib remainding rows to each row starting from master */
-  }
+  /* if there is a remainder */
+  if (rank < rest)
+    nrows += 1;  /* distrib remainding rows to each row starting from master */
 
   return nrows;
 }
