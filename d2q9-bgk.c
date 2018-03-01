@@ -92,7 +92,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
                int** obstacles_ptr, float** av_vels_ptr, int rank);
 
-int calc_ncols_from_rank(int rank, int size, int numRows);
+int calc_nrows_from_rank(int rank, int size, int numRows);
 
 /*
 ** The main calculation methods.
@@ -194,10 +194,10 @@ int main(int argc, char* argv[])
 
   int top = (rank + 1) % size;
   int bottom = (rank == MASTER) ? (rank + size - 1) : (rank - 1);
-  local_nrows = calc_ncols_from_rank(rank, size, params.ny);
+  local_nrows = calc_nrows_from_rank(rank, size, params.ny);
   local_ncols = params.nx;
-  int extra_local_nrows = calc_ncols_from_rank(MASTER, size, params.ny); //master will always be first to have extra row
-  int not_extra_local_nrows = calc_ncols_from_rank(size-1, size, params.ny);
+  int extra_local_nrows = calc_nrows_from_rank(MASTER, size, params.ny); //master will always be first to have extra row
+  int not_extra_local_nrows;
   int tag = 0;
   int rest = params.ny % size;
 
@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
   /* The last rank has the most columns apportioned.
      printbuf must be big enough to hold this number */
   // remote_nrows = calc_ncols_from_rank(size-1, size, params.ny);
-  // nlr_nrows = calc_ncols_from_rank(MASTER, size, params.ny);
+  //nlr_nrows = calc_ncols_from_rank(MASTER, size, params.ny);
 
   t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
   int halo_local_nrows = local_nrows + 2;
@@ -238,12 +238,12 @@ int main(int argc, char* argv[])
         MPI_Send(sendcbuf, extra_local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
         MPI_Send(sendobuf, extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
       } else{
-        not_extra_local_nrows = calc_ncols_from_rank(dest, size, params.ny);
+        not_extra_local_nrows = calc_nrows_from_rank(dest, size, params.ny);
         // t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
         // int* sendobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
         for(int jj = 0; jj < not_extra_local_nrows * local_ncols; jj++){
-          sendcbuf[jj] = cells[jj + ((rest*extra_local_nrows*local_ncols) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
-          sendobuf[jj] = obstacles[jj + ((rest*extra_local_nrows*local_ncols) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
+          sendcbuf[jj] = cells[jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
+          sendobuf[jj] = obstacles[jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
         }
         MPI_Send(sendcbuf, not_extra_local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
         MPI_Send(sendobuf, not_extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
@@ -264,11 +264,11 @@ int main(int argc, char* argv[])
     } else {
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
       // int* rcvobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
-      MPI_Recv(recvcbuf,not_extra_local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
+      MPI_Recv(recvcbuf,local_nrows*local_ncols, MPI_cell_type, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
         halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
       }
-      MPI_Recv(recvobuf, not_extra_local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+      MPI_Recv(recvobuf, local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < local_nrows*local_ncols; jj++){
         halo_obs[jj] = recvobuf[jj];
       }
@@ -329,7 +329,7 @@ int main(int argc, char* argv[])
           obstacles[jj + (source*(local_nrows*local_ncols))] = recvobuf[jj];
         }
       } else {
-        not_extra_local_nrows = calc_ncols_from_rank(source, size, params.ny);
+        not_extra_local_nrows = calc_nrows_from_rank(source, size, params.ny);
         MPI_Recv(recvcbuf, not_extra_local_nrows*local_ncols, MPI_cell_type, source, tag, MPI_COMM_WORLD, &status);
         MPI_Recv(recvobuf, not_extra_local_nrows*local_ncols, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
         for(int jj = 0; jj < not_extra_local_nrows*local_ncols; jj++){
@@ -360,7 +360,7 @@ int main(int argc, char* argv[])
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Datatype MPI_cell_type)
 {
-  if(size < 2*params.ny){
+  if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
     if(rank == size-2){
       accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
@@ -944,7 +944,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
   return EXIT_SUCCESS;
 }
 
-int calc_ncols_from_rank(int rank, int size, int numRows)
+int calc_nrows_from_rank(int rank, int size, int numRows)
 {
   int nrows;
 
