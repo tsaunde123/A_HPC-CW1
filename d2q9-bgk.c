@@ -103,6 +103,8 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
  int bottom, MPI_Datatype MPI_cell_type);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
+int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+              int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status, MPI_Datatype MPI_cell_type);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
@@ -153,6 +155,7 @@ int main(int argc, char* argv[])
   int rank;                     /* 'rank' of process among it's cohort */
   int size;                     /* size of cohort, i.e. num processes started */
   MPI_Status status;     /* struct used by MPI_Recv */
+  MPI_Request request;
   int local_nrows;       /* number of rows apportioned to this rank */
   int local_ncols;       /* number of columns apportioned to this rank */
   int remote_nrows;      /* number of columns apportioned to a remote rank */
@@ -482,6 +485,91 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
       halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
       halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
     }
+  }
+
+  return EXIT_SUCCESS;
+}
+
+int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+              int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status, MPI_Datatype MPI_cell_type)
+{
+  t_speed* sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  t_speed* recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  //Send top, receive bottom
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuf[jj] = halo_cells[jj + (halo_local_ncols*local_nrows)];
+  }
+  MPI_Isend(sendbuf,halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &request);
+  MPI_Irecv(recvbuf, halo_local_ncols, MPI_cell_type, bottom, 0, MPI_COMM_WORLD, &request);
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj] = recvbuf[jj];
+  }
+
+  //Send bottom, receive top
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuf[jj] = halo_cells[jj + (halo_local_ncols*1)];
+  }
+  MPI_Isend(sendbuf,halo_local_ncols, MPI_cell_type, bottom, 0, MPI_COMM_WORLD, &request);
+  MPI_Irecv(recvbuf, halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &request);
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuf[jj];
+  }
+
+  for (int jj = 1; jj < local_nrows-1; jj++)
+  {
+    for (int ii = 0; ii < local_ncols; ii++)
+    {
+      int y_n = (jj+1) + 1;
+      int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
+      int y_s = (jj+1) - 1;
+      int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
+
+      halo_temp[(ii + jj*params.nx)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
+      halo_temp[(ii + jj*params.nx)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
+      halo_temp[(ii + jj*params.nx)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+      halo_temp[(ii + jj*params.nx)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
+      halo_temp[(ii + jj*params.nx)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
+      halo_temp[(ii + jj*params.nx)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+      halo_temp[(ii + jj*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+      halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+      halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+    }
+  }
+
+  MPI_Wait(&request, &status);  /* unsafe to proceed beyond here until request has been satisfied */
+
+  int jj = 0;
+  for(int ii = 0; ii < local_ncols; ii++){
+    int y_n = (jj+1) + 1;
+    int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
+    int y_s = (jj+1) - 1;
+    int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
+    halo_temp[(ii + jj*params.nx)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
+    halo_temp[(ii + jj*params.nx)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
+    halo_temp[(ii + jj*params.nx)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+    halo_temp[(ii + jj*params.nx)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
+    halo_temp[(ii + jj*params.nx)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
+    halo_temp[(ii + jj*params.nx)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+    halo_temp[(ii + jj*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+    halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+    halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+  }
+
+  int jj = local_nrows;
+  for(int ii = 0; ii < local_ncols; ii++){
+    int y_n = (jj+1) + 1;
+    int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
+    int y_s = (jj+1) - 1;
+    int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
+    halo_temp[(ii + jj*params.nx)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
+    halo_temp[(ii + jj*params.nx)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
+    halo_temp[(ii + jj*params.nx)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+    halo_temp[(ii + jj*params.nx)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
+    halo_temp[(ii + jj*params.nx)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
+    halo_temp[(ii + jj*params.nx)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+    halo_temp[(ii + jj*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+    halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+    halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
   }
 
   return EXIT_SUCCESS;
