@@ -114,9 +114,9 @@ int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_s
 
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp);
-int rebound_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
+int rebound_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp);
-int rebound_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
+int rebound_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp, int jj);
 
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
@@ -406,7 +406,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
   //               recvbuftop, recvbufbottom);
 
   //rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
-  //collision(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_temp, halo_cells);
+  collision(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_temp, halo_cells);
   return EXIT_SUCCESS;
 }
 
@@ -603,7 +603,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   //   }
   // }
 
-  rebound_mid(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
+  rebound_mid(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
 
   MPI_Wait(&send_top_request, &status);
   MPI_Wait(&recv_bottom_request, &status);
@@ -648,7 +648,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   //   }
   // }
 
-  rebound_halo(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
+  rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
 
   MPI_Wait(&send_bottom_request, &status);
   MPI_Wait(&recv_top_request, &status);
@@ -694,7 +694,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   //   }
   // }
 
-  rebound_halo(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
+  rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
 
   return EXIT_SUCCESS;
 }
@@ -748,7 +748,7 @@ int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obsta
   return EXIT_SUCCESS;
 }
 
-int rebound_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
+int rebound_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp)
 {
   for (int jj = 1; jj < local_nrows-1; jj++)
@@ -768,9 +768,11 @@ int rebound_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, int* o
       }
     }
   }
+
+  return EXIT_SUCCESS;
 }
 
-int rebound_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
+int rebound_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int local_nrows, int local_ncols, int* halo_obs,
             t_speed* halo_cells, int rank, int size, int nlr_nrows, t_speed* halo_temp, int jj)
 {
   for (int ii = 0; ii < local_ncols; ii++)
@@ -787,6 +789,8 @@ int rebound_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int* 
       halo_cells[ii + (jj+1)*params.nx].speeds[8] = halo_temp[ii + jj*params.nx].speeds[6];
     }
   }
+
+  return EXIT_SUCCESS;
 }
 
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int local_nrows, int local_ncols, int* halo_obs,
