@@ -489,30 +489,6 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp)
 {
   /* loop over _all_ cells */
-  /*for (int jj = 0; jj < params.ny; jj++)
-  {
-    for (int ii = 0; ii < params.nx; ii++)
-    {
-      // determine indices of axis-direction neighbours
-      // respecting periodic boundary conditions (wrap around)
-      int y_n = (jj + 1) % params.ny;
-      int x_e = (ii + 1) % params.nx;
-      int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
-      int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
-      // propagate densities from neighbouring cells, following
-      // appropriate directions of travel and writing into
-      // scratch space grid
-      tmp_cells[ii + jj*params.nx].speeds[0] = cells[ii + jj*params.nx].speeds[0]; // central cell, no movement
-      tmp_cells[ii + jj*params.nx].speeds[1] = cells[x_w + jj*params.nx].speeds[1]; // east
-      tmp_cells[ii + jj*params.nx].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; // north
-      tmp_cells[ii + jj*params.nx].speeds[3] = cells[x_e + jj*params.nx].speeds[3]; // west
-      tmp_cells[ii + jj*params.nx].speeds[4] = cells[ii + y_n*params.nx].speeds[4]; // south
-      tmp_cells[ii + jj*params.nx].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; // north-east
-      tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; // north-west
-      tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; // south-west
-      tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; // south-east/
-    }
-  }*/
   for (int jj = 0; jj < local_nrows; jj++)
   {
     for (int ii = 0; ii < local_ncols; ii++)
@@ -585,24 +561,6 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     }
   }
 
-  // for (int jj = 1; jj < local_nrows-1; jj++)
-  // {
-  //   for (int ii = 0; ii < local_ncols; ii++)
-  //   {
-  //     if (halo_obs[jj*params.nx + ii])
-  //     {
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + jj*params.nx].speeds[3];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[2] = halo_temp[ii + jj*params.nx].speeds[4];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[3] = halo_temp[ii + jj*params.nx].speeds[1];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[4] = halo_temp[ii + jj*params.nx].speeds[2];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[5] = halo_temp[ii + jj*params.nx].speeds[7];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + jj*params.nx].speeds[8];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[7] = halo_temp[ii + jj*params.nx].speeds[5];
-  //       halo_cells[ii + (jj+1)*params.nx].speeds[8] = halo_temp[ii + jj*params.nx].speeds[6];
-  //     }
-  //   }
-  // }
-
   rebound_mid(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
 
   MPI_Wait(&send_top_request, &status);
@@ -611,42 +569,11 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_cells[jj] = recvbufbottom[jj];
   }
 
-  // BOTTOM ROW
-  // int jj = 0;
-  // for(int ii = 0; ii < local_ncols; ii++){
-  //   int y_n = (jj+1) + 1;
-  //   int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
-  //   int y_s = (jj+1) - 1;
-  //   int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
-  //   halo_temp[(ii + jj*params.nx)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
-  //   halo_temp[(ii + jj*params.nx)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
-  //   halo_temp[(ii + jj*params.nx)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
-  //   halo_temp[(ii + jj*params.nx)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
-  //   halo_temp[(ii + jj*params.nx)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
-  //   halo_temp[(ii + jj*params.nx)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
-  //   halo_temp[(ii + jj*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
-  //   halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
-  //   halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
-  // }
   int jj = 0;
   propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
                 halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request, recv_top_request, send_bottom_request, recv_bottom_request,
                 recvbuftop, recvbufbottom, jj);
 
-  // for (int ii = 0; ii < local_ncols; ii++)
-  // {
-  //   if (halo_obs[jj*params.nx + ii])
-  //   {
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + jj*params.nx].speeds[3];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[2] = halo_temp[ii + jj*params.nx].speeds[4];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[3] = halo_temp[ii + jj*params.nx].speeds[1];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[4] = halo_temp[ii + jj*params.nx].speeds[2];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[5] = halo_temp[ii + jj*params.nx].speeds[7];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + jj*params.nx].speeds[8];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[7] = halo_temp[ii + jj*params.nx].speeds[5];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[8] = halo_temp[ii + jj*params.nx].speeds[6];
-  //   }
-  // }
 
   rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
 
@@ -656,43 +583,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuftop[jj];
   }
 
-  // TOP ROW
-  // jj = local_nrows-1;
-  // for(int ii = 0; ii < local_ncols; ii++){
-  //   int y_n = (jj+1) + 1;
-  //   int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
-  //   int y_s = (jj+1) - 1;
-  //   int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
-  //   halo_temp[(ii + jj*params.nx)].speeds[0] = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
-  //   halo_temp[(ii + jj*params.nx)].speeds[1] = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
-  //   halo_temp[(ii + jj*params.nx)].speeds[2] = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
-  //   halo_temp[(ii + jj*params.nx)].speeds[3] = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
-  //   halo_temp[(ii + jj*params.nx)].speeds[4] = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
-  //   halo_temp[(ii + jj*params.nx)].speeds[5] = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
-  //   halo_temp[(ii + jj*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
-  //   halo_temp[(ii + jj*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
-  //   halo_temp[(ii + jj*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
-  // }
-
   jj = local_nrows-1;
   propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
                 halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request, recv_top_request, send_bottom_request, recv_bottom_request,
                 recvbuftop, recvbufbottom, jj);
-
-  // for (int ii = 0; ii < local_ncols; ii++)
-  // {
-  //   if (halo_obs[jj*params.nx + ii])
-  //   {
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + jj*params.nx].speeds[3];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[2] = halo_temp[ii + jj*params.nx].speeds[4];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[3] = halo_temp[ii + jj*params.nx].speeds[1];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[4] = halo_temp[ii + jj*params.nx].speeds[2];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[5] = halo_temp[ii + jj*params.nx].speeds[7];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + jj*params.nx].speeds[8];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[7] = halo_temp[ii + jj*params.nx].speeds[5];
-  //     halo_cells[ii + (jj+1)*params.nx].speeds[8] = halo_temp[ii + jj*params.nx].speeds[6];
-  //   }
-  // }
 
   rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
 
