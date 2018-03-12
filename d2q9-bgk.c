@@ -563,6 +563,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       halo_temp[(ii + (jj+1)*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
       halo_temp[(ii + (jj+1)*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
       halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+    }
+  }
+  for (int jj = 1; jj < local_nrows-1; jj++){
+    for (int ii = 0; ii < local_ncols; ii++){
       if (halo_obs[ii + jj*params.nx]){ //REBOUND
         float tmp_speed;
         tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
@@ -577,7 +581,12 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[6];
         halo_temp[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
         halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
-      } else { //COLLISION
+      }
+    }
+  }
+  for (int jj = 1; jj < local_nrows-1; jj++){
+    for (int ii = 0; ii < local_ncols; ii++){
+      if (!halo_obs[ii + jj*params.nx]){ //COLLISION
         /* compute local density total */
         float local_density = 0.f;
         for (int kk = 0; kk < NSPEEDS; kk++){
@@ -675,6 +684,8 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[(ii + (jj+1)*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+  }
+  for(int ii = 0; ii < local_ncols; ii++){
     if (halo_obs[ii + jj*params.nx]){
       float tmp_speed;
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
@@ -689,7 +700,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[6];
       halo_temp[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
       halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
-    } else {
+    }
+  }
+  for(int ii = 0; ii < local_ncols; ii++){
+    if (!halo_obs[ii + jj*params.nx]) {
       /* compute local density total */
       float local_density = 0.f;
       for (int kk = 0; kk < NSPEEDS; kk++){
@@ -788,6 +802,8 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[(ii + (jj+1)*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+  }
+  for(int ii = 0; ii < local_ncols; ii++){
     if (halo_obs[ii + jj*params.nx]){
       float tmp_speed;
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
@@ -802,7 +818,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[6];
       halo_temp[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
       halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
-    } else {
+    }
+  }
+  for(int ii = 0; ii < local_ncols; ii++){
+    if (!halo_obs[ii + jj*params.nx]) {
       /* compute local density total */
       float local_density = 0.f;
       for (int kk = 0; kk < NSPEEDS; kk++)
