@@ -274,7 +274,7 @@ int main(int argc, char* argv[])
         // int* sendobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
         for(int speed = 0; speed < NSPEEDS; speed++){
           for(int jj = 0; jj < not_extra_local_nrows * local_ncols; jj++){
-            sendcbuf[(local_ncols*local_nrows) * speed + jj] = cells[(params.nx*params.ny) * speed + jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
+            sendcbuf[(local_ncols*not_extra_local_nrows) * speed + jj] = cells[(params.nx*params.ny) * speed + jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
           }
         }
         for(int jj = 0; jj < not_extra_local_nrows * local_ncols; jj++){
@@ -376,7 +376,7 @@ int main(int argc, char* argv[])
         MPI_Recv(recvcbuf, 9*not_extra_local_nrows*local_ncols, MPI_FLOAT, source, tag, MPI_COMM_WORLD, &status);
         for(int speed = 0; speed < NSPEEDS; speed++){
           for(int jj = 0; jj < not_extra_local_nrows*local_ncols; jj++){
-            cells[(params.nx*params.ny) * speed + jj + ((rest*extra_local_nrows*local_ncols) + (source-rest)*(not_extra_local_nrows*local_ncols))] = recvcbuf[(local_ncols*local_nrows) * speed + jj];
+            cells[(params.nx*params.ny) * speed + jj + ((rest*extra_local_nrows*local_ncols) + (source-rest)*(not_extra_local_nrows*local_ncols))] = recvcbuf[(local_ncols*not_extra_local_nrows) * speed + jj];
           }
         }
       }
