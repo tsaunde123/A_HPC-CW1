@@ -100,7 +100,7 @@ int calc_nrows_from_rank(int rank, int size, int numRows);
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
 int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
- int bottom, MPI_Datatype MPI_cell_type, MPI_Request request);
+ int bottom, MPI_Datatype MPI_cell_type, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom);
 int accelerate_flow(const t_param params, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
@@ -237,12 +237,17 @@ int main(int argc, char* argv[])
   int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
   float* halo_temp = (float*)malloc(sizeof(float) * NSPEEDS * (local_nrows+2) * local_ncols);
 
+  /* Buffers for distributing cells in main */
   float* sendcbuf = (float*)malloc(sizeof(float) * NSPEEDS * extra_local_nrows * local_ncols);
   float* recvcbuf = (float*)malloc(sizeof(float) * NSPEEDS * extra_local_nrows * local_ncols);
   int* sendobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
   int* recvobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
-  //t_speed* sendtbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
-  //t_speed* recvtbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
+
+  /* Buffers for async halo_ex */
+  float* sendbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* sendbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* recvbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* recvbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
 
   if(rank == MASTER){
     for(int speed = 0; speed < NSPEEDS; speed++){
@@ -288,26 +293,13 @@ int main(int argc, char* argv[])
     if(rank < rest){
       // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
       // int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
-      MPI_Recv(recvcbuf, 9*extra_local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int speed = 0; speed < NSPEEDS; speed++){
-        for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
-          halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1] = recvcbuf[(local_ncols*local_nrows) * speed + jj];
-        }
-      }
-      MPI_Recv(recvobuf, extra_local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int jj = 0; jj < local_nrows*local_ncols; jj++){
-        halo_obs[jj] = recvobuf[jj];
-      }
-    } else {
-      // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * local_nrows * local_ncols);
-      // int* rcvobuf = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
       MPI_Recv(recvcbuf, 9*local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int speed = 0; speed < NSPEEDS; speed++){
         for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
           halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1] = recvcbuf[(local_ncols*local_nrows) * speed + jj];
         }
       }
-      MPI_Recv(recvobuf, local_nrows*halo_local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+      MPI_Recv(recvobuf, local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
       for(int jj = 0; jj < local_nrows*local_ncols; jj++){
         halo_obs[jj] = recvobuf[jj];
       }
@@ -320,7 +312,7 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, MPI_cell_type, request);
+    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, MPI_cell_type, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom);
     float* swap_ptr = halo_cells;
     halo_cells = halo_temp;
     halo_temp = swap_ptr;
@@ -342,21 +334,12 @@ int main(int argc, char* argv[])
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   if(rank != MASTER){
-    if(rank < rest){
-      for(int speed = 0; speed < NSPEEDS; speed++){
-        for(int jj = 0; jj < extra_local_nrows * local_ncols; jj++){
-          sendcbuf[(local_ncols*local_nrows) * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1];
-        }
+    for(int speed = 0; speed < NSPEEDS; speed++){
+      for(int jj = 0; jj < extra_local_nrows * local_ncols; jj++){
+        sendcbuf[(local_ncols*local_nrows) * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1];
       }
-      MPI_Send(sendcbuf, 9*extra_local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD);
-    } else {
-      for(int speed = 0; speed < NSPEEDS; speed++){
-        for(int jj = 0; jj < local_nrows * local_ncols; jj++){
-          sendcbuf[(local_ncols*local_nrows) * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1];
-        }
-      }
-      MPI_Send(sendcbuf, 9*local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD);
     }
+    MPI_Send(sendcbuf, 9*local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD);
   } else {
     for(int speed = 0; speed < NSPEEDS; speed++){
       for(int jj = 0; jj < local_ncols*local_nrows; jj++){
@@ -401,7 +384,7 @@ int main(int argc, char* argv[])
 }
 
 int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
- int bottom, MPI_Datatype MPI_cell_type, MPI_Request request)
+ int bottom, MPI_Datatype MPI_cell_type, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom)
 {
   if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
     if(rank == size-2){
@@ -460,26 +443,6 @@ int accelerate_flow(const t_param params, float* cells, int* obstacles, float* h
   int o_jj = local_nrows - 2;
   int jj = params.ny-2;
 
-  /*for (int ii = 0; ii < params.nx; ii++)
-    {
-      // if the cell is not occupied and
-      //     ** we don't send a negative density
-      if (!obstacles[ii + jj*params.nx]
-          && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
-          && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
-          && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
-      {
-        // increase 'east-side' densities
-        cells[ii + jj*params.nx].speeds[1] += w1;
-        cells[ii + jj*params.nx].speeds[5] += w2;
-        cells[ii + jj*params.nx].speeds[8] += w2;
-        // decrease 'west-side' densities
-        cells[ii + jj*params.nx].speeds[3] -= w1;
-        cells[ii + jj*params.nx].speeds[6] -= w2;
-        cells[ii + jj*params.nx].speeds[7] -= w2;
-      }
-    }*/
-
   for (int ii = 0; ii < params.nx; ii++)
   {
     // if the cell is not occupied and
@@ -499,28 +462,6 @@ int accelerate_flow(const t_param params, float* cells, int* obstacles, float* h
       halo_cells[(local_ncols*(local_nrows+2)) * 7 + ii + h_jj*params.nx] -= w2;
     }
   }
-
-  // for (int ii = 0; ii < params.nx; ii++)
-  // {
-  //   // if the cell is not occupied and
-  //   // we don't send a negative density
-  //   if (!halo_obs[ii + o_jj*params.nx]
-  //       && (halo_cells[ii + h_jj*params.nx].speeds[3] - w1) > 0.f
-  //       && (halo_cells[ii + h_jj*params.nx].speeds[6] - w2) > 0.f
-  //       && (halo_cells[ii + h_jj*params.nx].speeds[7] - w2) > 0.f)
-  //   {
-  //     // increase 'east-side' densities
-  //     halo_cells[ii + h_jj*params.nx].speeds[1] += w1;
-  //     halo_cells[ii + h_jj*params.nx].speeds[5] += w2;
-  //     halo_cells[ii + h_jj*params.nx].speeds[8] += w2;
-  //     // decrease 'west-side' densities
-  //     halo_cells[ii + h_jj*params.nx].speeds[3] -= w1;
-  //     halo_cells[ii + h_jj*params.nx].speeds[6] -= w2;
-  //     halo_cells[ii + h_jj*params.nx].speeds[7] -= w2;
-  //   }
-  // }
-
-
 
   return EXIT_SUCCESS;
 }
@@ -563,15 +504,6 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
   const float w2 = 1.f / 36.f; /* weighting factor */
 
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
-
-  // float* sendbuftop = (float*)malloc((sizeof(float)*3) * local_ncols);
-  // float* sendbufbottom = (float*)malloc((sizeof(float)*3) * local_ncols);
-  // float* recvbuftop = (float*)malloc((sizeof(float)*3) * local_ncols);
-  // float* recvbufbottom = (float*)malloc((sizeof(float)*3) * local_ncols);
-  float* sendbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* sendbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* recvbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* recvbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
 
   //Send top, receive bottom
   for(int speed = 0; speed < NSPEEDS; speed++){
