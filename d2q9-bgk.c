@@ -347,7 +347,7 @@ int main(int argc, char* argv[])
 }
 
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
- int bottom, MPI_Datatype MPI_cell_type, MPI_Request request)
+ int bottom, MPI_Datatype MPI_cell_type, MPI_Request request, t_speed* sendbuftop, t_speed* sendbufbottom, t_speed* recvbuftop, t_speed* recvbufbottom)
 {
   if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
     if(rank == size-2){
