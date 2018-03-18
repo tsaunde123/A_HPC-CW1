@@ -106,7 +106,7 @@ int accelerate_flow(const t_param params, float* cells, int* obstacles, float* h
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
 int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, float* halo_temp, MPI_Request request, MPI_Status status,
-              MPI_Datatype MPI_cell_type, int top, int bottom, int* halo_obs);
+              MPI_Datatype MPI_cell_type, int top, int bottom, int* halo_obs, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom);
 int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status,
               MPI_Datatype MPI_cell_type, int top, int bottom, MPI_Request	send_top_request, MPI_Request recv_top_request, MPI_Request send_bottom_request,
@@ -290,19 +290,17 @@ int main(int argc, char* argv[])
       }
     }
   } else {
-    if(rank < rest){
-      // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
-      // int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
-      MPI_Recv(recvcbuf, 9*local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int speed = 0; speed < NSPEEDS; speed++){
-        for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
-          halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1] = recvcbuf[(local_ncols*local_nrows) * speed + jj];
-        }
+    // t_speed* rcvcbuf = (t_speed*)malloc(sizeof(t_speed) * remote_nrows * local_ncols);
+    // int* rcvobuf = (int*)malloc(sizeof(int) * remote_nrows * local_ncols);
+    MPI_Recv(recvcbuf, 9*local_nrows*local_ncols, MPI_FLOAT, MASTER, tag, MPI_COMM_WORLD, &status);
+    for(int speed = 0; speed < NSPEEDS; speed++){
+      for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
+        halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + halo_local_ncols*1] = recvcbuf[(local_ncols*local_nrows) * speed + jj];
       }
-      MPI_Recv(recvobuf, local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
-      for(int jj = 0; jj < local_nrows*local_ncols; jj++){
-        halo_obs[jj] = recvobuf[jj];
-      }
+    }
+    MPI_Recv(recvobuf, local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+    for(int jj = 0; jj < local_nrows*local_ncols; jj++){
+      halo_obs[jj] = recvobuf[jj];
     }
   }
 
@@ -402,7 +400,7 @@ int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacle
   //propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
 
   propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
-                halo_temp, request, status, MPI_cell_type, top, bottom, halo_obs);
+                halo_temp, request, status, MPI_cell_type, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom);
 
   // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
   //               halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request,recv_top_request,send_bottom_request,recv_bottom_request,
@@ -496,7 +494,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
 
 int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, float* halo_temp, MPI_Request request, MPI_Status status,
-              MPI_Datatype MPI_cell_type, int top, int bottom, int* halo_obs)
+              MPI_Datatype MPI_cell_type, int top, int bottom, int* halo_obs, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom)
 {
   const float c_sq = 1.f / 3.f; /* square of speed of sound */
   const float w0 = 4.f / 9.f;  /* weighting factor */
