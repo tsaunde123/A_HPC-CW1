@@ -230,7 +230,7 @@ int main(int argc, char* argv[])
   t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
   int halo_local_nrows = local_nrows + 2;
   int halo_local_ncols = local_ncols;
-  // int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+  int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
   t_speed* halo_temp = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
 
   t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * extra_local_nrows * local_ncols);
@@ -1480,9 +1480,9 @@ int initialise(const char* paramfile, const char* obstaclefile,
     if (*tmp_cells_ptr == NULL) die("cannot allocate memory for tmp_cells", __LINE__, __FILE__);
 
     /* the map of obstacles */
-    // *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
-    //
-    // if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
+    *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
+    
+    if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
 
   /* initialise densities */
   float w0 = params->density * 4.f / 9.f;
