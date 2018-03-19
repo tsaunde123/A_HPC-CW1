@@ -230,13 +230,13 @@ int main(int argc, char* argv[])
   t_speed* halo_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
   int halo_local_nrows = local_nrows + 2;
   int halo_local_ncols = local_ncols;
-  int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+  // int* halo_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
   t_speed* halo_temp = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
 
   t_speed* sendcbuf = (t_speed*)malloc(sizeof(t_speed) * extra_local_nrows * local_ncols);
   t_speed* recvcbuf = (t_speed*)malloc(sizeof(t_speed) * extra_local_nrows * local_ncols);
-  int* sendobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
-  int* recvobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
+  // int* sendobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
+  // int* recvobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
 
   t_speed* sendbuftop = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   t_speed* sendbufbottom = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
@@ -246,24 +246,24 @@ int main(int argc, char* argv[])
   if(rank == MASTER){
     for(int jj = 0; jj < local_ncols*local_nrows; jj++){
       halo_cells[jj+(1*local_ncols)] = cells[jj + (rank*(local_nrows*local_ncols))];
-      halo_obs[jj] = obstacles[jj + (rank*(local_nrows*local_ncols))];
+      // halo_obs[jj] = obstacles[jj + (rank*(local_nrows*local_ncols))];
     }
     for(int dest = 1; dest < size; dest++){
       if(dest < rest){ //if dest has extra row
         for(int jj = 0; jj < extra_local_nrows * local_ncols; jj++){
           sendcbuf[jj] = cells[jj + (dest*(extra_local_nrows*local_ncols))];
-          sendobuf[jj] = obstacles[jj + (dest*(extra_local_nrows*local_ncols))];
+          // sendobuf[jj] = obstacles[jj + (dest*(extra_local_nrows*local_ncols))];
         }
         MPI_Send(sendcbuf, extra_local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
-        MPI_Send(sendobuf, extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
+        // MPI_Send(sendobuf, extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
       } else{
         not_extra_local_nrows = calc_nrows_from_rank(dest, size, params.ny);
         for(int jj = 0; jj < not_extra_local_nrows * local_ncols; jj++){
           sendcbuf[jj] = cells[jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
-          sendobuf[jj] = obstacles[jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
+          // sendobuf[jj] = obstacles[jj + ((rest*(extra_local_nrows*local_ncols)) + (dest-rest)*(not_extra_local_nrows*local_ncols))];
         }
         MPI_Send(sendcbuf, not_extra_local_nrows*local_ncols, MPI_cell_type, dest, tag, MPI_COMM_WORLD);
-        MPI_Send(sendobuf, not_extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
+        // MPI_Send(sendobuf, not_extra_local_nrows*local_ncols, MPI_INT, dest, tag, MPI_COMM_WORLD);
       }
     }
   } else {
@@ -271,10 +271,10 @@ int main(int argc, char* argv[])
     for(int jj = 0; jj < local_nrows * halo_local_ncols; jj++){
       halo_cells[jj + halo_local_ncols*1] = recvcbuf[jj];
     }
-    MPI_Recv(recvobuf, local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
-    for(int jj = 0; jj < local_nrows*local_ncols; jj++){
-      halo_obs[jj] = recvobuf[jj];
-    }
+    // MPI_Recv(recvobuf, local_nrows*local_ncols, MPI_INT, MASTER, tag, MPI_COMM_WORLD, &status);
+    // for(int jj = 0; jj < local_nrows*local_ncols; jj++){
+    //   halo_obs[jj] = recvobuf[jj];
+    // }
   }
 
   /* iterate for maxIters timesteps */
@@ -409,7 +409,7 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   {
     // if the cell is not occupied and
     // we don't send a negative density
-    if (!halo_obs[ii + o_jj*params.nx]
+    if (!(halo_cells[ii + h_jj*params.nx].speeds[0] == -1)
         && (halo_cells[ii + h_jj*params.nx].speeds[3] - w1) > 0.f
         && (halo_cells[ii + h_jj*params.nx].speeds[6] - w2) > 0.f
         && (halo_cells[ii + h_jj*params.nx].speeds[7] - w2) > 0.f)
@@ -504,7 +504,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   }
   for (int jj = 1; jj < local_nrows-1; jj++){
     for (int ii = 0; ii < local_ncols; ii++){
-      if (halo_obs[ii + jj*params.nx]){ //REBOUND
+      if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){ //REBOUND
         float tmp_speed;
         tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
         halo_temp[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + (jj+1)*params.nx].speeds[3];
@@ -523,7 +523,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   }
   for (int jj = 1; jj < local_nrows-1; jj++){
     for (int ii = 0; ii < local_ncols; ii++){
-      if (!halo_obs[ii + jj*params.nx]){ //COLLISION
+      if (!(halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1)){ //COLLISION
         /* compute local density total */
         float local_density = 0.f;
         for (int kk = 0; kk < NSPEEDS; kk++){
@@ -623,7 +623,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
   }
   for(int ii = 0; ii < local_ncols; ii++){
-    if (halo_obs[ii + jj*params.nx]){
+    if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){
       float tmp_speed;
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
       halo_temp[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + (jj+1)*params.nx].speeds[3];
@@ -640,7 +640,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     }
   }
   for(int ii = 0; ii < local_ncols; ii++){
-    if (!halo_obs[ii + jj*params.nx]) {
+    if (!(halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1)) {
       /* compute local density total */
       float local_density = 0.f;
       for (int kk = 0; kk < NSPEEDS; kk++){
@@ -741,7 +741,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
   }
   for(int ii = 0; ii < local_ncols; ii++){
-    if (halo_obs[ii + jj*params.nx]){
+    if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){
       float tmp_speed;
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
       halo_temp[ii + (jj+1)*params.nx].speeds[1] = halo_temp[ii + (jj+1)*params.nx].speeds[3];
@@ -758,7 +758,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     }
   }
   for(int ii = 0; ii < local_ncols; ii++){
-    if (!halo_obs[ii + jj*params.nx]) {
+    if (!(halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1)) {
       /* compute local density total */
       float local_density = 0.f;
       for (int kk = 0; kk < NSPEEDS; kk++)
@@ -1264,7 +1264,7 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
     for (int ii = 0; ii < local_ncols; ii++)
     {
       /* ignore occupied cells */
-      if (!halo_obs[ii + (jj-1)*params.nx])
+      if (!(halo_cells[ii + jj*params.nx].speeds[0] == -1))
       {
         /* local density total */
         float local_density = 0.f;
@@ -1480,9 +1480,9 @@ int initialise(const char* paramfile, const char* obstaclefile,
     if (*tmp_cells_ptr == NULL) die("cannot allocate memory for tmp_cells", __LINE__, __FILE__);
 
     /* the map of obstacles */
-    *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
-
-    if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
+    // *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
+    //
+    // if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
 
   /* initialise densities */
   float w0 = params->density * 4.f / 9.f;
@@ -1540,6 +1540,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
 
     /* assign to array */
     (*obstacles_ptr)[xx + yy*params->nx] = blocked;
+    (*cells_ptr)[xx + yy*params->nx].speeds[0] = -1;
   }
 
   /* and close the file */
