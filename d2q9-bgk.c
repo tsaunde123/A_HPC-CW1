@@ -364,15 +364,14 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   //propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
 
-  propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
-                halo_temp, request, status, MPI_cell_type, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom);
+  propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp, request, status, MPI_cell_type, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom);
 
   // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
   //               halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request,recv_top_request,send_bottom_request,recv_bottom_request,
   //               recvbuftop, recvbufbottom);
 
   //rebound(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
-  collision(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_temp, halo_cells);
+  //collision(params, cells, tmp_cells, obstacles, local_nrows, local_ncols, halo_obs, halo_temp, halo_cells);
   return EXIT_SUCCESS;
 }
 
