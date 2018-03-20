@@ -405,23 +405,40 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   int o_jj = local_nrows - 2;
   int jj = params.ny-2;
 
+  int h_jj_mult_paramsnx = h_jj * params.nx;
+
   for (int ii = 0; ii < params.nx; ii++)
   {
     // if the cell is not occupied and
     // we don't send a negative density
-    if (!(halo_cells[ii + h_jj*params.nx].speeds[0] == -1)
-        && (halo_cells[ii + h_jj*params.nx].speeds[3] - w1) > 0.f
-        && (halo_cells[ii + h_jj*params.nx].speeds[6] - w2) > 0.f
-        && (halo_cells[ii + h_jj*params.nx].speeds[7] - w2) > 0.f)
+    // (halo_cells[ii + h_jj_mult_paramsnx].speeds[0] != -1
+    //   && (halo_cells[ii + h_jj_mult_paramsnx].speeds[3] - w1) > 0.f
+    //   && (halo_cells[ii + h_jj_mult_paramsnx].speeds[6] - w2) > 0.f
+    //   && (halo_cells[ii + h_jj_mult_paramsnx].speeds[7] - w2) > 0.f)
+    //   ?
+    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[1] += w1;
+    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[5] += w2;
+    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[8] += w2;
+    //     // decrease 'west-side' densities
+    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[3] -= w1;
+    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[6] -= w2;
+    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[7] -= w2;
+    //   :
+    //     continue;
+
+    if (!(halo_cells[ii + h_jj_mult_paramsnx].speeds[0] == -1)
+        && (halo_cells[ii + h_jj_mult_paramsnx].speeds[3] - w1) > 0.f
+        && (halo_cells[ii + h_jj_mult_paramsnx].speeds[6] - w2) > 0.f
+        && (halo_cells[ii + h_jj_mult_paramsnx].speeds[7] - w2) > 0.f)
     {
       // increase 'east-side' densities
-      halo_cells[ii + h_jj*params.nx].speeds[1] += w1;
-      halo_cells[ii + h_jj*params.nx].speeds[5] += w2;
-      halo_cells[ii + h_jj*params.nx].speeds[8] += w2;
+      halo_cells[ii + h_jj_mult_paramsnx].speeds[1] += w1;
+      halo_cells[ii + h_jj_mult_paramsnx].speeds[5] += w2;
+      halo_cells[ii + h_jj_mult_paramsnx].speeds[8] += w2;
       // decrease 'west-side' densities
-      halo_cells[ii + h_jj*params.nx].speeds[3] -= w1;
-      halo_cells[ii + h_jj*params.nx].speeds[6] -= w2;
-      halo_cells[ii + h_jj*params.nx].speeds[7] -= w2;
+      halo_cells[ii + h_jj_mult_paramsnx].speeds[3] -= w1;
+      halo_cells[ii + h_jj_mult_paramsnx].speeds[6] -= w2;
+      halo_cells[ii + h_jj_mult_paramsnx].speeds[7] -= w2;
     }
   }
 
@@ -500,10 +517,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       halo_temp[(ii + (jj+1)*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
       halo_temp[(ii + (jj+1)*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
       halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
-    }
-  }
-  for (int jj = 1; jj < local_nrows-1; jj++){
-    for (int ii = 0; ii < local_ncols; ii++){
+
       if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){ //REBOUND
         float tmp_speed;
         tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
@@ -518,12 +532,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[6];
         halo_temp[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
         halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
-      }
-    }
-  }
-  for (int jj = 1; jj < local_nrows-1; jj++){
-    for (int ii = 0; ii < local_ncols; ii++){
-      if (!(halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1)){ //COLLISION
+      } else { //COLLISION
         /* compute local density total */
         float local_density = 0.f;
         for (int kk = 0; kk < NSPEEDS; kk++){
@@ -621,8 +630,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[(ii + (jj+1)*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
-  }
-  for(int ii = 0; ii < local_ncols; ii++){
+
     if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){
       float tmp_speed;
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
@@ -637,10 +645,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[6];
       halo_temp[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
       halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
-    }
-  }
-  for(int ii = 0; ii < local_ncols; ii++){
-    if (!(halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1)) {
+    } else {
       /* compute local density total */
       float local_density = 0.f;
       for (int kk = 0; kk < NSPEEDS; kk++){
@@ -739,8 +744,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[(ii + (jj+1)*params.nx)].speeds[6] = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[7] = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
     halo_temp[(ii + (jj+1)*params.nx)].speeds[8] = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
-  }
-  for(int ii = 0; ii < local_ncols; ii++){
+
     if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){
       float tmp_speed;
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[1];
@@ -755,10 +759,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       tmp_speed = halo_temp[ii + (jj+1)*params.nx].speeds[6];
       halo_temp[ii + (jj+1)*params.nx].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
       halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
-    }
-  }
-  for(int ii = 0; ii < local_ncols; ii++){
-    if (!(halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1)) {
+    } else {
       /* compute local density total */
       float local_density = 0.f;
       for (int kk = 0; kk < NSPEEDS; kk++)
@@ -1481,7 +1482,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
 
     /* the map of obstacles */
     *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
-    
+
     if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
 
   /* initialise densities */
