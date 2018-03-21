@@ -399,9 +399,15 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   /* compute weighting factors */
   float w1 = params.density * params.accel / 9.f;
   float w2 = params.density * params.accel / 36.f;
+  
+  int h_jj;
 
   /* modify the 2nd row of the grid */
-  int h_jj = local_nrows - 1;
+  if(local_nrows == 1){
+    h_jj = local_nrows;  
+  } else {
+    h_jj = local_nrows - 1;
+  }
   int o_jj = local_nrows - 2;
   int jj = params.ny-2;
 
@@ -409,23 +415,6 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
 
   for (int ii = 0; ii < params.nx; ii++)
   {
-    // if the cell is not occupied and
-    // we don't send a negative density
-    // (halo_cells[ii + h_jj_mult_paramsnx].speeds[0] != -1
-    //   && (halo_cells[ii + h_jj_mult_paramsnx].speeds[3] - w1) > 0.f
-    //   && (halo_cells[ii + h_jj_mult_paramsnx].speeds[6] - w2) > 0.f
-    //   && (halo_cells[ii + h_jj_mult_paramsnx].speeds[7] - w2) > 0.f)
-    //   ?
-    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[1] += w1;
-    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[5] += w2;
-    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[8] += w2;
-    //     // decrease 'west-side' densities
-    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[3] -= w1;
-    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[6] -= w2;
-    //     halo_cells[ii + h_jj_mult_paramsnx].speeds[7] -= w2;
-    //   :
-    //     continue;
-
     if (!(halo_cells[ii + h_jj_mult_paramsnx].speeds[0] == -1)
         && (halo_cells[ii + h_jj_mult_paramsnx].speeds[3] - w1) > 0.f
         && (halo_cells[ii + h_jj_mult_paramsnx].speeds[6] - w2) > 0.f
@@ -484,7 +473,17 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   const float w1 = 1.f / 9.f;  /* weighting factor */
   const float w2 = 1.f / 36.f; /* weighting factor */
 
+  struct timeval timstr;        /* structure to hold elapsed time */
+  struct rusage ru;             /* structure to hold CPU time--system and user */
+  double tic, toc;              /* floating point numbers to calculate elapsed wallclock time */
+  double usrtim;                /* floating point number to record elapsed user CPU time */
+  double systim;
+
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
+
+  //printf("HALO EXCHANGE\n");
+  //gettimeofday(&timstr, NULL);
+  //tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   //Send top, receive bottom
   for(int jj = 0; jj < halo_local_ncols; jj++){
@@ -499,6 +498,18 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   }
   MPI_Isend(sendbufbottom,halo_local_ncols, MPI_cell_type, bottom, 0, MPI_COMM_WORLD, &send_bottom_request);
   MPI_Irecv(recvbuftop, halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &recv_top_request);
+  
+  //gettimeofday(&timstr, NULL);
+  //toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //getrusage(RUSAGE_SELF, &ru);
+  //timstr = ru.ru_utime;
+  //usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //timstr = ru.ru_stime;
+  //systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
+  //printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
+  //printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);  
+
 
   //MIDDLE ROWS
   for (int jj = 1; jj < local_nrows-1; jj++){
@@ -609,11 +620,28 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
 
   //rebound_mid(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
   //colision_mid
+  
+  //printf("FIRST MPI WAIT\n");
+  //gettimeofday(&timstr, NULL);
+  //tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);  
+
   MPI_Wait(&send_top_request, &status);
   MPI_Wait(&recv_bottom_request, &status);
   for(int jj = 0; jj < halo_local_ncols; jj++){
     halo_cells[jj] = recvbufbottom[jj];
   }
+
+  //gettimeofday(&timstr, NULL);
+  //toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //getrusage(RUSAGE_SELF, &ru);
+  //timstr = ru.ru_utime;
+  //usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //timstr = ru.ru_stime;
+  //systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+
+  //printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
+  //printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
+  //printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
 
   int jj = 0;
   for(int ii = 0; ii < local_ncols; ii++){
@@ -723,11 +751,27 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   //               recvbuftop, recvbufbottom, jj);
   // rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
 
+  //printf("SECOND MPI WAIT\n");
+  //gettimeofday(&timstr, NULL);
+  //tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+
   MPI_Wait(&send_bottom_request, &status);
   MPI_Wait(&recv_top_request, &status);
   for(int jj = 0; jj < halo_local_ncols; jj++){
     halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuftop[jj];
   }
+
+  //gettimeofday(&timstr, NULL);
+  //toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //getrusage(RUSAGE_SELF, &ru);
+  //timstr = ru.ru_utime;
+  //usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+  //timstr = ru.ru_stime;
+  //systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+
+  //printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
+  //printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
+  //printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
 
   jj = local_nrows-1;
   for(int ii = 0; ii < local_ncols; ii++){
@@ -1299,20 +1343,20 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
     }
   }
 
-  if(rank == MASTER){
-    for(int source = 1; source < size; source++){
-      MPI_Recv(&recv_tot_u, 1, MPI_FLOAT, source, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(&recv_tot_cells, 1, MPI_INT, source, 0, MPI_COMM_WORLD, &status);
-      tot_u += recv_tot_u;
-      tot_cells += recv_tot_cells;
-    }
-    return tot_u / (float)tot_cells;
-  } else {
-    MPI_Send(&tot_u, 1, MPI_FLOAT, MASTER, 0, MPI_COMM_WORLD);
-    MPI_Send(&tot_cells, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
-  }
+  //if(rank == MASTER){
+  //  for(int source = 1; source < size; source++){
+  //    MPI_Recv(&recv_tot_u, 1, MPI_FLOAT, source, 0, MPI_COMM_WORLD, &status);
+  //    MPI_Recv(&recv_tot_cells, 1, MPI_INT, source, 0, MPI_COMM_WORLD, &status);
+  //    tot_u += recv_tot_u;
+  //    tot_cells += recv_tot_cells;
+  //  }
+  //  return tot_u / (float)tot_cells;
+  //} else {
+  //  MPI_Send(&tot_u, 1, MPI_FLOAT, MASTER, 0, MPI_COMM_WORLD);
+  //  MPI_Send(&tot_cells, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+  //}
 
-  /*int global_tot_cells;
+  int global_tot_cells;
   float global_tot_u;
 
   // Reduce all of the local sums into the global sum
@@ -1321,7 +1365,7 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
 
   if(rank == MASTER){
     return global_tot_u / global_tot_cells;
-  }*/
+  }
 
  return 0;
 
