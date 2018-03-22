@@ -548,25 +548,22 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       //   halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
       // } else { //COLLISION
         /* compute local density total */
-        float local_density = 0.f;
-        for (int kk = 0; kk < NSPEEDS; kk++){
-          local_density += halo_temp[ii + (jj+1)*params.nx].speeds[kk];
-        }
+        float local_density = local0 + local1 + local2 + local3 + local4 + local5 + local6 + local7 + local8;
         /* compute x velocity component */
-        float u_x = (halo_temp[ii + (jj+1)*params.nx].speeds[1]
-                      + halo_temp[ii + (jj+1)*params.nx].speeds[5]
-                      + halo_temp[ii + (jj+1)*params.nx].speeds[8]
-                      - (halo_temp[ii + (jj+1)*params.nx].speeds[3]
-                         + halo_temp[ii + (jj+1)*params.nx].speeds[6]
-                         + halo_temp[ii + (jj+1)*params.nx].speeds[7]))
+        float u_x = (local1
+                      + local5
+                      + local8
+                      - (local3
+                         + local6
+                         + local7))
                      / local_density;
         /* compute y velocity component */
-        float u_y = (halo_temp[ii + (jj+1)*params.nx].speeds[2]
-                      + halo_temp[ii + (jj+1)*params.nx].speeds[5]
-                      + halo_temp[ii + (jj+1)*params.nx].speeds[6]
-                      - (halo_temp[ii + (jj+1)*params.nx].speeds[4]
-                         + halo_temp[ii + (jj+1)*params.nx].speeds[7]
-                         + halo_temp[ii + (jj+1)*params.nx].speeds[8]))
+        float u_y = (local2
+                      + local5
+                      + local6
+                      - (local4
+                         + local7
+                         + local8))
                      / local_density;
         /* velocity squared */
         float u_sq = u_x * u_x + u_y * u_y;
@@ -688,25 +685,23 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     //   halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
     // } else { //COLLISION
     /* compute local density total */
-    float local_density = 0.f;
-    for (int kk = 0; kk < NSPEEDS; kk++){
-      local_density += halo_temp[ii + (jj+1)*params.nx].speeds[kk];
-    }
+    float local_density = local0 + local1 + local2 + local3 + local4 + local5 + local6 + local7 + local8;
+
     /* compute x velocity component */
-    float u_x = (halo_temp[ii + (jj+1)*params.nx].speeds[1]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[5]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[8]
-                  - (halo_temp[ii + (jj+1)*params.nx].speeds[3]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[6]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[7]))
+    float u_x = (local1
+                  + local5
+                  + local8
+                  - (local3
+                     + local6
+                     + local7))
                  / local_density;
     /* compute y velocity component */
-    float u_y = (halo_temp[ii + (jj+1)*params.nx].speeds[2]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[5]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[6]
-                  - (halo_temp[ii + (jj+1)*params.nx].speeds[4]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[7]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[8]))
+    float u_y = (local2
+                  + local5
+                  + local6
+                  - (local4
+                     + local7
+                     + local8))
                  / local_density;
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
@@ -827,25 +822,23 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     //   halo_temp[ii + (jj+1)*params.nx].speeds[8] = tmp_speed;
     // } else { //COLLISION
     /* compute local density total */
-    float local_density = 0.f;
-    for (int kk = 0; kk < NSPEEDS; kk++){
-      local_density += halo_temp[ii + (jj+1)*params.nx].speeds[kk];
-    }
+    float local_density = local0 + local1 + local2 + local3 + local4 + local5 + local6 + local7 + local8;
+
     /* compute x velocity component */
-    float u_x = (halo_temp[ii + (jj+1)*params.nx].speeds[1]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[5]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[8]
-                  - (halo_temp[ii + (jj+1)*params.nx].speeds[3]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[6]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[7]))
+    float u_x = (local1
+                  + local5
+                  + local8
+                  - (local3
+                     + local6
+                     + local7))
                  / local_density;
     /* compute y velocity component */
-    float u_y = (halo_temp[ii + (jj+1)*params.nx].speeds[2]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[5]
-                  + halo_temp[ii + (jj+1)*params.nx].speeds[6]
-                  - (halo_temp[ii + (jj+1)*params.nx].speeds[4]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[7]
-                     + halo_temp[ii + (jj+1)*params.nx].speeds[8]))
+    float u_y = (local2
+                  + local5
+                  + local6
+                  - (local4
+                     + local7
+                     + local8))
                  / local_density;
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
