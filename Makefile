@@ -3,7 +3,7 @@
 EXE=d2q9-bgk
 
 CUDA_PATH=/mnt/storage/easybuild/software/CUDA/8.0.44
-CC=clang
+CC=mpiicc -cc=clang
 CFLAGS= -std=c99 -Wall -Ofast -fopenmp=libomp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=$(CUDA_PATH)
 LIBS = -lm
 
