@@ -49,6 +49,7 @@
 ** if you choose a different obstacle file.
 */
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -57,6 +58,7 @@
 #include <sys/resource.h>
 #include <mpi.h>
 #include <string.h>
+#include <omp.h>
 
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
@@ -281,6 +283,7 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
+//#pragma omp target teams distribute parallel for simd
   for (int tt = 0; tt < params.maxIters; tt++)
   {
     timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, MPI_cell_type, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom);
@@ -473,17 +476,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   const float w1 = 1.f / 9.f;  /* weighting factor */
   const float w2 = 1.f / 36.f; /* weighting factor */
 
-  struct timeval timstr;        /* structure to hold elapsed time */
-  struct rusage ru;             /* structure to hold CPU time--system and user */
-  double tic, toc;              /* floating point numbers to calculate elapsed wallclock time */
-  double usrtim;                /* floating point number to record elapsed user CPU time */
-  double systim;
-
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
-
-  //printf("HALO EXCHANGE\n");
-  //gettimeofday(&timstr, NULL);
-  //tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   //Send top, receive bottom
   for(int jj = 0; jj < halo_local_ncols; jj++){
@@ -499,18 +492,6 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   MPI_Isend(sendbufbottom,halo_local_ncols, MPI_cell_type, bottom, 0, MPI_COMM_WORLD, &send_bottom_request);
   MPI_Irecv(recvbuftop, halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &recv_top_request);
   
-  //gettimeofday(&timstr, NULL);
-  //toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //getrusage(RUSAGE_SELF, &ru);
-  //timstr = ru.ru_utime;
-  //usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //timstr = ru.ru_stime;
-  //systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
-  //printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
-  //printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);  
-
-
   //MIDDLE ROWS
   for (int jj = 1; jj < local_nrows-1; jj++){
     for (int ii = 0; ii < local_ncols; ii++){
@@ -621,27 +602,11 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   //rebound_mid(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
   //colision_mid
   
-  //printf("FIRST MPI WAIT\n");
-  //gettimeofday(&timstr, NULL);
-  //tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);  
-
   MPI_Wait(&send_top_request, &status);
   MPI_Wait(&recv_bottom_request, &status);
   for(int jj = 0; jj < halo_local_ncols; jj++){
     halo_cells[jj] = recvbufbottom[jj];
   }
-
-  //gettimeofday(&timstr, NULL);
-  //toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //getrusage(RUSAGE_SELF, &ru);
-  //timstr = ru.ru_utime;
-  //usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //timstr = ru.ru_stime;
-  //systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-
-  //printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
-  //printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
-  //printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
 
   int jj = 0;
   for(int ii = 0; ii < local_ncols; ii++){
@@ -751,27 +716,11 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   //               recvbuftop, recvbufbottom, jj);
   // rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
 
-  //printf("SECOND MPI WAIT\n");
-  //gettimeofday(&timstr, NULL);
-  //tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-
   MPI_Wait(&send_bottom_request, &status);
   MPI_Wait(&recv_top_request, &status);
   for(int jj = 0; jj < halo_local_ncols; jj++){
     halo_cells[jj + (halo_local_ncols*(local_nrows+1))] = recvbuftop[jj];
   }
-
-  //gettimeofday(&timstr, NULL);
-  //toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //getrusage(RUSAGE_SELF, &ru);
-  //timstr = ru.ru_utime;
-  //usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-  //timstr = ru.ru_stime;
-  //systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
-
-  //printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
-  //printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
-  //printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
 
   jj = local_nrows-1;
   for(int ii = 0; ii < local_ncols; ii++){
