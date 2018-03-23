@@ -2,8 +2,7 @@
 
 #SBATCH --job-name d2q9-bgk
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node 1 
-#SBATCH -c 28
+#SBATCH --ntasks-per-node 28
 #SBATCH --time 00:03:00
 #SBATCH --partition cpu
 #SBATCH --output d2q9-bgk.out
@@ -19,4 +18,4 @@ echo Number of nodes: $SLURM_NNODES
 echo CPUs per node: $SLURM_JOB_CPUS_PER_NODE
 
 #! Run the parallel MPI executable (nodes*ppn)
-mpirun -np $SLURM_JOB_CPUS_PER_NODE ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+mpirun ./d2q9-bgk input_128x128.params obstacles_128x128.dat

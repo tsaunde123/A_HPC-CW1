@@ -3,7 +3,7 @@
 EXE=d2q9-bgk
 
 CC=mpiicc
-CFLAGS= -std=c99 -Wall -Ofast -qopt-report=1 
+CFLAGS= -std=c99 -Wall -Ofast -xHost -qopenmp -qopt-report=1 
 LIBS = -lm
 
 FINAL_STATE_FILE=./final_state.dat
