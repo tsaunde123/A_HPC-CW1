@@ -506,7 +506,7 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
 
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
 
-  float local0, local1, local2, local3, local4, local5, local6, local7, local8;
+  float local[NSPEEDS];
 
   //Send top, receive bottom
   for(int speed = 0; speed < NSPEEDS; speed++){
@@ -535,15 +535,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
       int y_s = (jj+1) - 1;
       int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-      local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
-      local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-      local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
-      local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-      local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-      local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-      local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-      local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-      local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+      local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
+      local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
+      local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+      local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
+      local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+      local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+      local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+      local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+      local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
       // if (halo_obs[ii + jj*params.nx]){ //REBOUND
       //   float tmp_speed;
@@ -561,22 +561,22 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
       //   halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = tmp_speed;
       // } else{ //COLLISION
       /* compute local density total */
-      float local_density = local0 + local1 + local2 + local3 + local4 + local5 + local6 + local7 + local8;
+      float local_density = local[0] + local[1] + local[2] + local[3] + local[4]+ local[5]+ local[6] + local[7] + local[8];
       /* compute x velocity component */
-      float u_x = (local1
-                    + local5
-                    + local8
-                    - (local3
-                       + local6
-                       + local7))
+      float u_x = (local[1]
+                    + local[5]
+                    + local[8]
+                    - (local[3]
+                       + local[6]
+                       + local[7]))
                    / local_density;
       /* compute y velocity component */
-      float u_y = (local2
-                    + local5
-                    + local6
-                    - (local4
-                       + local7
-                       + local8))
+      float u_y = (local[2]
+                    + local[5]
+                    + local[6]
+                    - (local[4]
+                       + local[7]
+                       + local[8]))
                    / local_density;
       /* velocity squared */
       float u_sq = u_x * u_x + u_y * u_y;
@@ -622,15 +622,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                        + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
       /* relaxation step */
-      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local0 == -1) ?   -1   : local0 + params.omega * (d_equ[0] - local0);
-      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local0 == -1) ? local3 : local1 + params.omega * (d_equ[1] - local1);
-      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local0 == -1) ? local4 : local2 + params.omega * (d_equ[2] - local2);
-      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local0 == -1) ? local1 : local3 + params.omega * (d_equ[3] - local3);
-      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local0 == -1) ? local2 : local4 + params.omega * (d_equ[4] - local4);
-      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local0 == -1) ? local7 : local5 + params.omega * (d_equ[5] - local5);
-      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ[6] - local6);
-      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ[7] - local7);
-      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ[8] - local8);
+      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
     }
   }
 
@@ -652,15 +652,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
     int y_s = (jj+1) - 1;
     int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-    local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
-    local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
-    local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
+    local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
+    local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
+    local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
@@ -678,22 +678,22 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
     //   halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = tmp_speed;
     // } else{ //COLLISION
     /* compute local density total */
-    float local_density = local0 + local1 + local2 + local3 + local4 + local5 + local6 + local7 + local8;
+    float local_density = local[0] + local[1] + local[2] + local[3] + local[4]+ local[5]+ local[6] + local[7] + local[8];
     /* compute x velocity component */
-    float u_x = (local1
-                  + local5
-                  + local8
-                  - (local3
-                     + local6
-                     + local7))
+    float u_x = (local[1]
+                  + local[5]
+                  + local[8]
+                  - (local[3]
+                     + local[6]
+                     + local[7]))
                  / local_density;
     /* compute y velocity component */
-    float u_y = (local2
-                  + local5
-                  + local6
-                  - (local4
-                     + local7
-                     + local8))
+    float u_y = (local[2]
+                  + local[5]
+                  + local[6]
+                  - (local[4]
+                     + local[7]
+                     + local[8]))
                  / local_density;
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
@@ -739,15 +739,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                      + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local0 == -1) ?   -1   : local0 + params.omega * (d_equ[0] - local0);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local0 == -1) ? local3 : local1 + params.omega * (d_equ[1] - local1);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local0 == -1) ? local4 : local2 + params.omega * (d_equ[2] - local2);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local0 == -1) ? local1 : local3 + params.omega * (d_equ[3] - local3);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local0 == -1) ? local2 : local4 + params.omega * (d_equ[4] - local4);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local0 == -1) ? local7 : local5 + params.omega * (d_equ[5] - local5);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ[6] - local6);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ[7] - local7);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ[8] - local8);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
   }
 
 
@@ -767,15 +767,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
     int y_s = (jj+1) - 1;
     int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-    local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
-    local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
-    local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
+    local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
+    local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
+    local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
@@ -793,22 +793,22 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
     //   halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = tmp_speed;
     // } else{ //COLLISION
     /* compute local density total */
-    float local_density = local0 + local1 + local2 + local3 + local4 + local5 + local6 + local7 + local8;
+    float local_density = local[0] + local[1] + local[2] + local[3] + local[4]+ local[5]+ local[6] + local[7] + local[8];
     /* compute x velocity component */
-    float u_x = (local1
-                  + local5
-                  + local8
-                  - (local3
-                     + local6
-                     + local7))
+    float u_x = (local[1]
+                  + local[5]
+                  + local[8]
+                  - (local[3]
+                     + local[6]
+                     + local[7]))
                  / local_density;
     /* compute y velocity component */
-    float u_y = (local2
-                  + local5
-                  + local6
-                  - (local4
-                     + local7
-                     + local8))
+    float u_y = (local[2]
+                  + local[5]
+                  + local[6]
+                  - (local[4]
+                     + local[7]
+                     + local[8]))
                  / local_density;
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
@@ -854,15 +854,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                      + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local0 == -1) ?   -1   : local0 + params.omega * (d_equ[0] - local0);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local0 == -1) ? local3 : local1 + params.omega * (d_equ[1] - local1);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local0 == -1) ? local4 : local2 + params.omega * (d_equ[2] - local2);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local0 == -1) ? local1 : local3 + params.omega * (d_equ[3] - local3);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local0 == -1) ? local2 : local4 + params.omega * (d_equ[4] - local4);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local0 == -1) ? local7 : local5 + params.omega * (d_equ[5] - local5);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ[6] - local6);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ[7] - local7);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ[8] - local8);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
   }
 
   return EXIT_SUCCESS;
