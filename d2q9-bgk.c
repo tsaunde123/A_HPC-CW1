@@ -448,7 +448,7 @@ int accelerate_flow(const t_param params, float* cells, int* obstacles, float* h
   {
     // if the cell is not occupied and
     // we don't send a negative density
-    if (!halo_obs[ii + o_jj*params.nx]
+    if (!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + h_jj_mult_paramsnx == -1) //!halo_obs[ii + o_jj*params.nx]
         && (halo_cells[(local_ncols*(local_nrows+2)) * 3 + ii + h_jj_mult_paramsnx] - w1) > 0.f
         && (halo_cells[(local_ncols*(local_nrows+2)) * 6 + ii + h_jj_mult_paramsnx] - w2) > 0.f
         && (halo_cells[(local_ncols*(local_nrows+2)) * 7 + ii + h_jj_mult_paramsnx] - w2) > 0.f)
@@ -1553,6 +1553,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
     for (int ii = 0; ii < params->nx; ii++)
     {
       (*obstacles_ptr)[ii + jj*params->nx] = 0;
+      (*cells_ptr)[((params->nx*params->ny) * 0) + ii + jj*params->nx] = w0;
     }
   }
 
