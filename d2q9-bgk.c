@@ -448,7 +448,8 @@ int accelerate_flow(const t_param params, float* cells, int* obstacles, float* h
   {
     // if the cell is not occupied and
     // we don't send a negative density
-    if (!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + h_jj_mult_paramsnx == -1) //!halo_obs[ii + o_jj*params.nx]
+    if (!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + h_jj_mult_paramsnx] == -1) //!halo_obs[ii + o_jj*params.nx]
+    //if (!halo_obs[ii + o_jj*params.nx]
         && (halo_cells[(local_ncols*(local_nrows+2)) * 3 + ii + h_jj_mult_paramsnx] - w1) > 0.f
         && (halo_cells[(local_ncols*(local_nrows+2)) * 6 + ii + h_jj_mult_paramsnx] - w2) > 0.f
         && (halo_cells[(local_ncols*(local_nrows+2)) * 7 + ii + h_jj_mult_paramsnx] - w2) > 0.f)
@@ -528,7 +529,7 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
 
   //MIDDLE ROWS
   for (int jj = 1; jj < local_nrows-1; jj++){
-    #pragma omp simd
+  #pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
       int y_n = (jj+1) + 1;
       int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -1293,7 +1294,8 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int local_
     for (int ii = 0; ii < local_ncols; ii++)
     {
       /* ignore occupied cells */
-      if (!halo_obs[ii + (jj-1)*params.nx])
+      //if (!halo_obs[ii + (jj-1)*params.nax])
+      if(!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + jj*params.nx] == -1))
       {
         /* local density total */
         float local_density = 0.f;
@@ -1327,7 +1329,7 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int local_
     }
   }
 
-  if(rank == MASTER){
+  /*if(rank == MASTER){
     for(int source = 1; source < size; source++){
       MPI_Recv(&recv_tot_u, 1, MPI_FLOAT, source, 0, MPI_COMM_WORLD, &status);
       MPI_Recv(&recv_tot_cells, 1, MPI_INT, source, 0, MPI_COMM_WORLD, &status);
@@ -1338,9 +1340,9 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int local_
   } else {
     MPI_Send(&tot_u, 1, MPI_FLOAT, MASTER, 0, MPI_COMM_WORLD);
     MPI_Send(&tot_cells, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
-  }
+  }*/
 
-  /*int global_tot_cells;
+  int global_tot_cells;
   float global_tot_u;
 
   // Reduce all of the local sums into the global sum
@@ -1349,7 +1351,7 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int local_
 
   if(rank == MASTER){
     return global_tot_u / global_tot_cells;
-  }*/
+  }
 
  return 0;
 
@@ -1553,7 +1555,6 @@ int initialise(const char* paramfile, const char* obstaclefile,
     for (int ii = 0; ii < params->nx; ii++)
     {
       (*obstacles_ptr)[ii + jj*params->nx] = 0;
-      (*cells_ptr)[((params->nx*params->ny) * 0) + ii + jj*params->nx] = w0;
     }
   }
 
@@ -1580,6 +1581,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
 
     /* assign to array */
     (*obstacles_ptr)[xx + yy*params->nx] = blocked;
+    (*cells_ptr)[((params->nx*params->ny) * 0) + xx + yy*params->nx] = -1;
   }
 
   /* and close the file */
