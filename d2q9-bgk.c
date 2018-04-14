@@ -240,6 +240,9 @@ int main(int argc, char* argv[])
   // int* sendobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
   // int* recvobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
 
+  t_speed* tmp_halo_topline = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+  t_speed* tmp_halo_bottomline = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
+
   t_speed* sendbuftop = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   t_speed* sendbufbottom = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   t_speed* recvbuftop = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
@@ -284,6 +287,7 @@ int main(int argc, char* argv[])
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
 //#pragma omp target teams distribute parallel for simd
+#pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
   for (int tt = 0; tt < params.maxIters; tt++)
   {
     timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, MPI_cell_type, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom);
@@ -298,6 +302,7 @@ int main(int argc, char* argv[])
     printf("tot density: %.12E\n", total_density(params, cells));
 #endif
   }
+#pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   gettimeofday(&timstr, NULL);
   toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -493,9 +498,17 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   MPI_Isend(sendbufbottom,halo_local_ncols, MPI_cell_type, bottom, 0, MPI_COMM_WORLD, &send_bottom_request);
   MPI_Irecv(recvbuftop, halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &recv_top_request);
 
+  float local0, local1, local2, local3, local4, local5, local6, local7, local8;
+  
+
+ //#pragma omp target update to(halo_cells[0:9*params.nx*params.ny], halo_temp[0:9*params.nx*params.ny])
+ //{}
+
   //MIDDLE ROWS
+  //#pragma omp for collapse(2)
+#pragma omp target teams distribute parallel for simd //map(to:halo_cells) map(from:halo_temp)
   for (int jj = 1; jj < local_nrows-1; jj++){
-  #pragma omp simd
+  //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
       int y_n = (jj+1) + 1;
       int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -617,7 +630,8 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   }
 
   int jj = 0;
-  #pragma omp simd
+  //#pragma omp simd
+#pragma omp target teams distribute parallel for simd map(tofrom:recvbufbottom[0:local_ncols])
   for(int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -626,11 +640,11 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
 
     local0 = halo_cells[ii + (jj+1)*halo_local_ncols].speeds[0]; /* central cell, no movement */
     local1 = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
-    local2 = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
+    local2 = recvbufbottom[ii].speeds[2];//halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
     local3 = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
     local4 = halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
-    local5 = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
-    local6 = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
+    local5 = recvbufbottom[ii].speeds[5];//halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
+    local6 = recvbufbottom[ii].speeds[6];//halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
     local7 = halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
     local8 = halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
 
@@ -726,6 +740,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[ii + (jj+1)*params.nx].speeds[6] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ6 - local6);
     halo_temp[ii + (jj+1)*params.nx].speeds[7] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ7 - local7);
     halo_temp[ii + (jj+1)*params.nx].speeds[8] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ8 - local8);
+
+    recvbufbottom[ii].speeds[7]=halo_temp[ii + (jj+1)*params.nx].speeds[7];
+    recvbufbottom[ii].speeds[4]=halo_temp[ii + (jj+1)*params.nx].speeds[4];
+    recvbufbottom[ii].speeds[8]=halo_temp[ii + (jj+1)*params.nx].speeds[8];
   }
   // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
   //               halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request, recv_top_request, send_bottom_request, recv_bottom_request,
@@ -739,7 +757,8 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   }
 
   jj = local_nrows-1;
-  #pragma omp simd
+  //#pragma omp simd
+  #pragma omp target teams distribute parallel for simd //map(to:halo_cells) map(from:halo_temp)
   for(int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -849,10 +868,10 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     halo_temp[ii + (jj+1)*params.nx].speeds[7] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ7 - local7);
     halo_temp[ii + (jj+1)*params.nx].speeds[8] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ8 - local8);
   }
-  // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
-  //               halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request, recv_top_request, send_bottom_request, recv_bottom_request,
-  //               recvbuftop, recvbufbottom, jj);
-  // rebound_halo(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp, jj);
+
+  //#pragma omp target update from(halo_cells[0:9*params.nx*params.ny], halo_temp[0:9*params.nx*params.ny])
+  //{}
+
   return EXIT_SUCCESS;
 }
 
