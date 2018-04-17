@@ -101,12 +101,12 @@ int calc_nrows_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
+int timestep(int params_nx, int params_ny, float params_density, float params_accel, float params_omega, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Datatype MPI_cell_type, MPI_Request request, t_speed* sendbuftop, t_speed* sendbufbottom, t_speed* recvbuftop, t_speed* recvbufbottom, t_speed* tmp_halo_topline, t_speed* tmp_halo_bottomline);
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
+int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows);
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
-int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+int propagate_mid(int params_nx, int params_ny, float params_omega, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status,
               MPI_Datatype MPI_cell_type, int top, int bottom, int* halo_obs, t_speed* sendbuftop, t_speed* sendbufbottom, t_speed* recvbuftop, t_speed* recvbufbottom, t_speed* tmp_halo_topline, t_speed* tmp_halo_bottomline);
 int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
@@ -146,7 +146,7 @@ float total_density(const t_param params, t_speed* cells);
 
 /* compute average velocity */
 float final_av_velocity(const t_param params, t_speed* cells, int* obstacles);
-float av_velocity(const t_param params, t_speed* cells, int* obstacles, int local_nrows, int local_ncols, t_speed* halo_cells, int rank,
+float av_velocity(int params_nx, int params_ny, t_speed* cells, int* obstacles, int local_nrows, int local_ncols, t_speed* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs);
 
 /* calculate Reynolds number */
@@ -225,6 +225,12 @@ int main(int argc, char* argv[])
   int not_extra_local_nrows;
   int tag = 0;
   int rest = params.ny % size;
+  int params_nx = params.nx;
+  int params_ny = params.ny;
+  float params_omega = params.omega;
+  float params_accel = params.accel;
+  float params_density = params.density;
+  int params_maxIters = params.maxIters;
 
   sendbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
   recvbuf = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
@@ -290,31 +296,31 @@ int main(int argc, char* argv[])
     tmp_halo_bottomline[jj] = halo_cells[jj + (halo_local_ncols*1)];
   }
 
+  //#pragma omp target teams distribute parallel for simd
+  #pragma omp target enter data map(to: halo_cells[0:halo_local_ncols*halo_local_nrows], halo_temp[0:halo_local_ncols*halo_local_nrows])
+
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-//#pragma omp target teams distribute parallel for simd
-#pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
-  for (int tt = 0; tt < params.maxIters; tt++)
+  for (int tt = 0; tt < params_maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, MPI_cell_type, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+    timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, MPI_cell_type, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
     //t_speed* swap_ptr = halo_cells;
     //halo_cells = halo_temp;
     //halo_temp = swap_ptr;
-    halo_cells = (tt % 2) ? halo_cells : halo_temp;
-    halo_temp = (tt % 2) ? halo_temp : halo_cells;
+    halo_cells = (tt % 1) ? halo_cells : halo_temp;
+    halo_temp = (tt % 1) ? halo_temp : halo_cells;
     // xnew = (iters % 2) ? x2 : x1;
     // xold = (iters % 2) ? x1 : x2;
     //av_vels[tt] = av_velocity(params, cells, obstacles);
-    av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+    av_vels[tt] = av_velocity(params_nx, params_ny, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
     printf("tot density: %.12E\n", total_density(params, cells));
 #endif
   }
-#pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   gettimeofday(&timstr, NULL);
   toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -323,6 +329,8 @@ int main(int argc, char* argv[])
   usrtim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
+
+  #pragma omp target exit data map(from: halo_cells[0:halo_local_ncols*halo_local_nrows], halo_temp[0:halo_local_ncols*halo_local_nrows])
 
   if(rank != MASTER){
     for(int jj = 0; jj < local_nrows * local_ncols; jj++){
@@ -366,16 +374,16 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
+int timestep(int params_nx, int params_ny, float params_density, float params_accel, float params_omega, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, t_speed* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Datatype MPI_cell_type, MPI_Request request, t_speed* sendbuftop, t_speed* sendbufbottom, t_speed* recvbuftop, t_speed* recvbufbottom, t_speed* tmp_halo_topline, t_speed* tmp_halo_bottomline)
 {
-  if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
+  if(calc_nrows_from_rank(size-1, size, params_ny) == 1){
     if(rank == size-2){
-      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
+      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
   } else {
     if(rank == size-1){
-      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
+      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows);
     }
   }
 
@@ -384,7 +392,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   //propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
 
-  propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp, request, status, MPI_cell_type, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+  propagate_mid(params_nx, params_ny, params_omega, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp, request, status, MPI_cell_type, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
   // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
   //               halo_temp, request, status, MPI_cell_type, top, bottom, send_top_request,recv_top_request,send_bottom_request,recv_bottom_request,
@@ -414,11 +422,11 @@ void async_halo_ex(t_speed* halo_cells, int halo_local_ncols, int halo_local_nro
   MPI_Irecv(recvbuftop, halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &recv_top_request);
 }
 
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows)
+int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, t_speed* cells, int* obstacles, t_speed* halo_cells, int* halo_obs, int local_nrows)
 {
   /* compute weighting factors */
-  float w1 = params.density * params.accel / 9.f;
-  float w2 = params.density * params.accel / 36.f;
+  float w1 = params_density * params_accel / 9.f;
+  float w2 = params_density * params_accel / 36.f;
 
   int h_jj;
 
@@ -430,11 +438,12 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_spee
   // }
   h_jj = (local_nrows == 1) ? local_nrows : local_nrows-1;
   int o_jj = local_nrows - 2;
-  int jj = params.ny-2;
+  int jj = params_ny-2;
 
-  int h_jj_mult_paramsnx = h_jj * params.nx;
+  int h_jj_mult_paramsnx = h_jj * params_nx;
 
-  for (int ii = 0; ii < params.nx; ii++)
+  #pragma omp target teams distribute parallel for simd
+  for (int ii = 0; ii < params_nx; ii++)
   {
     if (!(halo_cells[ii + h_jj_mult_paramsnx].speeds[0] == -1)
         && (halo_cells[ii + h_jj_mult_paramsnx].speeds[3] - w1) > 0.f
@@ -485,7 +494,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
   return EXIT_SUCCESS;
 }
 
-int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+int propagate_mid(int params_nx, int params_ny, float params_omega, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status,
               MPI_Datatype MPI_cell_type, int top, int bottom, int* halo_obs, t_speed* sendbuftop, t_speed* sendbufbottom, t_speed* recvbuftop, t_speed* recvbufbottom,
               t_speed* tmp_halo_topline, t_speed* tmp_halo_bottomline)
@@ -521,7 +530,7 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
 
   //MIDDLE ROWS
   //#pragma omp for collapse(2)
-#pragma omp target teams distribute parallel for simd //map(to:halo_cells) map(from:halo_temp)
+#pragma omp target teams distribute parallel for simd collapse(2)//map(to:halo_cells) map(from:halo_temp)
   for (int jj = 1; jj < local_nrows-1; jj++){
   //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
@@ -622,15 +631,15 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         //                                           + params.omega
         //                                           * (d_equ[kk] - halo_temp[ii + (jj+1)*params.nx].speeds[kk]);
         // }
-        halo_temp[ii + (jj+1)*params.nx].speeds[0] = (local0 == -1) ?   -1   : local0 + params.omega * (d_equ0 - local0);
-        halo_temp[ii + (jj+1)*params.nx].speeds[1] = (local0 == -1) ? local3 : local1 + params.omega * (d_equ1 - local1);
-        halo_temp[ii + (jj+1)*params.nx].speeds[2] = (local0 == -1) ? local4 : local2 + params.omega * (d_equ2 - local2);
-        halo_temp[ii + (jj+1)*params.nx].speeds[3] = (local0 == -1) ? local1 : local3 + params.omega * (d_equ3 - local3);
-        halo_temp[ii + (jj+1)*params.nx].speeds[4] = (local0 == -1) ? local2 : local4 + params.omega * (d_equ4 - local4);
-        halo_temp[ii + (jj+1)*params.nx].speeds[5] = (local0 == -1) ? local7 : local5 + params.omega * (d_equ5 - local5);
-        halo_temp[ii + (jj+1)*params.nx].speeds[6] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ6 - local6);
-        halo_temp[ii + (jj+1)*params.nx].speeds[7] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ7 - local7);
-        halo_temp[ii + (jj+1)*params.nx].speeds[8] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ8 - local8);
+        halo_temp[ii + (jj+1)*params_nx].speeds[0] = (local0 == -1) ?   -1   : local0 + params_omega * (d_equ0 - local0);
+        halo_temp[ii + (jj+1)*params_nx].speeds[1] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
+        halo_temp[ii + (jj+1)*params_nx].speeds[2] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
+        halo_temp[ii + (jj+1)*params_nx].speeds[3] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
+        halo_temp[ii + (jj+1)*params_nx].speeds[4] = (local0 == -1) ? local2 : local4 + params_omega * (d_equ4 - local4);
+        halo_temp[ii + (jj+1)*params_nx].speeds[5] = (local0 == -1) ? local7 : local5 + params_omega * (d_equ5 - local5);
+        halo_temp[ii + (jj+1)*params_nx].speeds[6] = (local0 == -1) ? local8 : local6 + params_omega * (d_equ6 - local6);
+        halo_temp[ii + (jj+1)*params_nx].speeds[7] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
+        halo_temp[ii + (jj+1)*params_nx].speeds[8] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
       }
     }
   // }
@@ -746,19 +755,19 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     //                                           + params.omega
     //                                           * (d_equ[kk] - halo_temp[ii + (jj+1)*params.nx].speeds[kk]);
     // }
-    halo_temp[ii + (jj+1)*params.nx].speeds[0] = (local0 == -1) ?   -1   : local0 + params.omega * (d_equ0 - local0);
-    halo_temp[ii + (jj+1)*params.nx].speeds[1] = (local0 == -1) ? local3 : local1 + params.omega * (d_equ1 - local1);
-    halo_temp[ii + (jj+1)*params.nx].speeds[2] = (local0 == -1) ? local4 : local2 + params.omega * (d_equ2 - local2);
-    halo_temp[ii + (jj+1)*params.nx].speeds[3] = (local0 == -1) ? local1 : local3 + params.omega * (d_equ3 - local3);
-    halo_temp[ii + (jj+1)*params.nx].speeds[4] = (local0 == -1) ? local2 : local4 + params.omega * (d_equ4 - local4);
-    halo_temp[ii + (jj+1)*params.nx].speeds[5] = (local0 == -1) ? local7 : local5 + params.omega * (d_equ5 - local5);
-    halo_temp[ii + (jj+1)*params.nx].speeds[6] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ6 - local6);
-    halo_temp[ii + (jj+1)*params.nx].speeds[7] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ7 - local7);
-    halo_temp[ii + (jj+1)*params.nx].speeds[8] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ8 - local8);
+    halo_temp[ii + (jj+1)*params_nx].speeds[0] = (local0 == -1) ?   -1   : local0 + params_omega * (d_equ0 - local0);
+    halo_temp[ii + (jj+1)*params_nx].speeds[1] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
+    halo_temp[ii + (jj+1)*params_nx].speeds[2] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
+    halo_temp[ii + (jj+1)*params_nx].speeds[3] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
+    halo_temp[ii + (jj+1)*params_nx].speeds[4] = (local0 == -1) ? local2 : local4 + params_omega * (d_equ4 - local4);
+    halo_temp[ii + (jj+1)*params_nx].speeds[5] = (local0 == -1) ? local7 : local5 + params_omega * (d_equ5 - local5);
+    halo_temp[ii + (jj+1)*params_nx].speeds[6] = (local0 == -1) ? local8 : local6 + params_omega * (d_equ6 - local6);
+    halo_temp[ii + (jj+1)*params_nx].speeds[7] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
+    halo_temp[ii + (jj+1)*params_nx].speeds[8] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
-    recvbufbottom[ii].speeds[7] = halo_temp[ii + (jj+1)*params.nx].speeds[7];
-    recvbufbottom[ii].speeds[4] = halo_temp[ii + (jj+1)*params.nx].speeds[4];
-    recvbufbottom[ii].speeds[8] = halo_temp[ii + (jj+1)*params.nx].speeds[8];
+    recvbufbottom[ii].speeds[7] = halo_temp[ii + (jj+1)*params_nx].speeds[7];
+    recvbufbottom[ii].speeds[4] = halo_temp[ii + (jj+1)*params_nx].speeds[4];
+    recvbufbottom[ii].speeds[8] = halo_temp[ii + (jj+1)*params_nx].speeds[8];
   }
   for(int jj = 0; jj < halo_local_ncols; jj++){
     tmp_halo_topline[jj] = recvbufbottom[jj];
@@ -876,19 +885,19 @@ int propagate_mid(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
     //                                           + params.omega
     //                                           * (d_equ[kk] - halo_temp[ii + (jj+1)*params.nx].speeds[kk]);
     // }
-    halo_temp[ii + (jj+1)*params.nx].speeds[0] = (local0 == -1) ?   -1   : local0 + params.omega * (d_equ0 - local0);
-    halo_temp[ii + (jj+1)*params.nx].speeds[1] = (local0 == -1) ? local3 : local1 + params.omega * (d_equ1 - local1);
-    halo_temp[ii + (jj+1)*params.nx].speeds[2] = (local0 == -1) ? local4 : local2 + params.omega * (d_equ2 - local2);
-    halo_temp[ii + (jj+1)*params.nx].speeds[3] = (local0 == -1) ? local1 : local3 + params.omega * (d_equ3 - local3);
-    halo_temp[ii + (jj+1)*params.nx].speeds[4] = (local0 == -1) ? local2 : local4 + params.omega * (d_equ4 - local4);
-    halo_temp[ii + (jj+1)*params.nx].speeds[5] = (local0 == -1) ? local7 : local5 + params.omega * (d_equ5 - local5);
-    halo_temp[ii + (jj+1)*params.nx].speeds[6] = (local0 == -1) ? local8 : local6 + params.omega * (d_equ6 - local6);
-    halo_temp[ii + (jj+1)*params.nx].speeds[7] = (local0 == -1) ? local5 : local7 + params.omega * (d_equ7 - local7);
-    halo_temp[ii + (jj+1)*params.nx].speeds[8] = (local0 == -1) ? local6 : local8 + params.omega * (d_equ8 - local8);
+    halo_temp[ii + (jj+1)*params_nx].speeds[0] = (local0 == -1) ?   -1   : local0 + params_omega * (d_equ0 - local0);
+    halo_temp[ii + (jj+1)*params_nx].speeds[1] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
+    halo_temp[ii + (jj+1)*params_nx].speeds[2] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
+    halo_temp[ii + (jj+1)*params_nx].speeds[3] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
+    halo_temp[ii + (jj+1)*params_nx].speeds[4] = (local0 == -1) ? local2 : local4 + params_omega * (d_equ4 - local4);
+    halo_temp[ii + (jj+1)*params_nx].speeds[5] = (local0 == -1) ? local7 : local5 + params_omega * (d_equ5 - local5);
+    halo_temp[ii + (jj+1)*params_nx].speeds[6] = (local0 == -1) ? local8 : local6 + params_omega * (d_equ6 - local6);
+    halo_temp[ii + (jj+1)*params_nx].speeds[7] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
+    halo_temp[ii + (jj+1)*params_nx].speeds[8] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
-    recvbuftop[ii].speeds[6] = halo_temp[ii + (jj+1)*params.nx].speeds[6];
-    recvbuftop[ii].speeds[2] = halo_temp[ii + (jj+1)*params.nx].speeds[2];
-    recvbuftop[ii].speeds[5] = halo_temp[ii + (jj+1)*params.nx].speeds[5];
+    recvbuftop[ii].speeds[6] = halo_temp[ii + (jj+1)*params_nx].speeds[6];
+    recvbuftop[ii].speeds[2] = halo_temp[ii + (jj+1)*params_nx].speeds[2];
+    recvbuftop[ii].speeds[5] = halo_temp[ii + (jj+1)*params_nx].speeds[5];
   }
   for(int jj = 0; jj < halo_local_ncols; jj++){
     tmp_halo_bottomline[jj] = recvbuftop[jj];
@@ -1308,7 +1317,7 @@ int rebound_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int l
 //  return EXIT_SUCCESS;
 //}
 
-float av_velocity(const t_param params, t_speed* cells, int* obstacles, int local_nrows, int local_ncols, t_speed* halo_cells, int rank,
+float av_velocity(int params_nx, int params_ny, t_speed* cells, int* obstacles, int local_nrows, int local_ncols, t_speed* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs)
 {
   int    tot_cells = 0;  /* no. of cells used in calculation */
@@ -1325,31 +1334,31 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int loca
     for (int ii = 0; ii < local_ncols; ii++)
     {
       /* ignore occupied cells */
-      if (!(halo_cells[ii + jj*params.nx].speeds[0] == -1))
+      if (!(halo_cells[ii + jj*params_nx].speeds[0] == -1))
       {
         /* local density total */
         float local_density = 0.f;
 
         for (int kk = 0; kk < NSPEEDS; kk++)
         {
-          local_density += halo_cells[ii + jj*params.nx].speeds[kk];
+          local_density += halo_cells[ii + jj*params_nx].speeds[kk];
         }
 
         /* x-component of velocity */
-        float u_x = (halo_cells[ii + jj*params.nx].speeds[1]
-                      + halo_cells[ii + jj*params.nx].speeds[5]
-                      + halo_cells[ii + jj*params.nx].speeds[8]
-                      - (halo_cells[ii + jj*params.nx].speeds[3]
-                         + halo_cells[ii + jj*params.nx].speeds[6]
-                         + halo_cells[ii + jj*params.nx].speeds[7]))
+        float u_x = (halo_cells[ii + jj*params_nx].speeds[1]
+                      + halo_cells[ii + jj*params_nx].speeds[5]
+                      + halo_cells[ii + jj*params_nx].speeds[8]
+                      - (halo_cells[ii + jj*params_nx].speeds[3]
+                         + halo_cells[ii + jj*params_nx].speeds[6]
+                         + halo_cells[ii + jj*params_nx].speeds[7]))
                      / local_density;
         /* compute y velocity component */
-        float u_y = (halo_cells[ii + jj*params.nx].speeds[2]
-                      + halo_cells[ii + jj*params.nx].speeds[5]
-                      + halo_cells[ii + jj*params.nx].speeds[6]
-                      - (halo_cells[ii + jj*params.nx].speeds[4]
-                         + halo_cells[ii + jj*params.nx].speeds[7]
-                         + halo_cells[ii + jj*params.nx].speeds[8]))
+        float u_y = (halo_cells[ii + jj*params_nx].speeds[2]
+                      + halo_cells[ii + jj*params_nx].speeds[5]
+                      + halo_cells[ii + jj*params_nx].speeds[6]
+                      - (halo_cells[ii + jj*params_nx].speeds[4]
+                         + halo_cells[ii + jj*params_nx].speeds[7]
+                         + halo_cells[ii + jj*params_nx].speeds[8]))
                      / local_density;
         /* accumulate the norm of x- and y- velocity components */
         tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
