@@ -145,7 +145,7 @@ int finalise(const t_param* params, float** cells_ptr, float** tmp_cells_ptr,
 float total_density(const t_param params, float* cells);
 
 /* compute average velocity */
-float final_av_velocity(const t_param params, t_speed* cells, int* obstacles);
+float final_av_velocity(const t_param params, float* cells, int* obstacles);
 float av_velocity(int params_nx, int params_ny, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs);
 
