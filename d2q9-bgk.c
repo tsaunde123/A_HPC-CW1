@@ -103,7 +103,7 @@ int calc_nrows_from_rank(int rank, int size, int numRows);
 */
 int timestep(int params_nx, int params_ny, float params_density, float params_accel, float params_omega, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Datatype MPI_cell_type, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline);
-int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows);
+int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
 int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
@@ -256,6 +256,9 @@ int main(int argc, char* argv[])
   float* sendbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
   float* recvbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
   float* recvbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+
+  float* tmp_halo_topline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* tmp_halo_bottomline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
 
   if(rank == MASTER){
     for(int speed = 0; speed < NSPEEDS; speed++){
@@ -419,11 +422,11 @@ int timestep(int params_nx, int params_ny, float params_density, float params_ac
 {
   if(calc_nrows_from_rank(size-1, size, params_ny) == 1){
     if(rank == size-2){
-      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows);
+      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
   } else {
     if(rank == size-1){
-      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows);
+      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
   }
 
@@ -462,7 +465,7 @@ void async_halo_ex(t_speed* halo_cells, int halo_local_ncols, int halo_local_nro
   MPI_Irecv(recvbuftop, halo_local_ncols, MPI_cell_type, top, 0, MPI_COMM_WORLD, &recv_top_request);
 }
 
-int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows)
+int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols)
 {
   /* compute weighting factors */
   float w1 = params_density * params_accel / 9.f;
