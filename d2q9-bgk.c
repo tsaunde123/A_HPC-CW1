@@ -331,6 +331,7 @@ int main(int argc, char* argv[])
     halo_temp = swap_ptr;
     //av_vels[tt] = av_velocity(params, cells, obstacles);
     av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+    printf("Iter %d end run \n", tt);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -523,6 +524,8 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
 
   float local[NSPEEDS];
+  
+  if(rank==MASTER) printf("Master entered  Prop mid \n");
 
   //Send top, receive bottom
   for(int speed = 0; speed < NSPEEDS; speed++){
@@ -541,6 +544,8 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
   }
   MPI_Isend(sendbufbottom, 9*halo_local_ncols, MPI_FLOAT, bottom, 0, MPI_COMM_WORLD, &send_bottom_request);
   MPI_Irecv(recvbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
+
+  if(rank==MASTER) printf("Rank %d did halo ex properly \n", rank);
 
   //MIDDLE ROWS
   for (int jj = 1; jj < local_nrows-1; jj++){
@@ -650,15 +655,18 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
     }
   }
 
+  //if(rank==MASTER) printf("Master did prop_mid on middle rows correctly\n");
+  //printf("Rank %d did prop_mid on middle chunk correctly \n", rank);
+
   //rebound_mid(params, cells, tmp_cells, local_nrows, local_ncols, halo_obs, halo_cells, rank, size, nlr_nrows, halo_temp);
   //colision_mid
   MPI_Wait(&send_top_request, &status);
   MPI_Wait(&recv_bottom_request, &status);
-  // for(int speed = 0; speed < NSPEEDS; speed++){
-  //   for(int jj = 0; jj < halo_local_ncols; jj++){
-  //     halo_cells[(local_ncols*(local_nrows+2)) * speed + jj] = recvbufbottom[local_ncols * speed + jj];
-  //   }
-  // }
+  //for(int speed = 0; speed < NSPEEDS; speed++){
+  //  for(int jj = 0; jj < halo_local_ncols; jj++){
+  //    halo_cells[(local_ncols*(local_nrows+2)) * speed + jj] = recvbufbottom[local_ncols * speed + jj];
+  //  }
+  //}
 
   int jj = 0;
   #pragma omp simd
@@ -670,11 +678,11 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
 
     local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
     local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local[2] = recvbufbottom[local_ncols * 2 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local[2] = recvbufbottom[local_ncols * 2 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
     local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local[5] = recvbufbottom[local_ncols * 5 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local[6] = recvbufbottom[local_ncols * 6 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local[5] = recvbufbottom[local_ncols * 5 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local[6] = recvbufbottom[local_ncols * 6 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
     local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
     local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
@@ -774,6 +782,8 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
       tmp_halo_bottomline[local_ncols * speed + jj] = recvbufbottom[local_ncols * speed + jj];
     }
   }
+
+  printf("Rank %d did prop_mid on bottom line correctly \n", rank);
 
 
   MPI_Wait(&send_bottom_request, &status);
