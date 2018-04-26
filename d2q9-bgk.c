@@ -249,6 +249,9 @@ int main(int argc, char* argv[])
   float* recvbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
   float* recvbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
 
+  float* tmp_halo_topline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* tmp_halo_bottomline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+
   if(rank == MASTER){
     for(int speed = 0; speed < NSPEEDS; speed++){
       for(int jj = 0; jj < local_ncols*local_nrows; jj++){
