@@ -802,8 +802,8 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells
     halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
     halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
-    recvbufbottom[local_ncols * 7 * ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
-    recvbufbottom[local_ncols * 4 * ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx];
     recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx];
   }
   for(int speed = 0; speed < NSPEEDS; speed++){
@@ -926,8 +926,8 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells
     halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
     halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
-    recvbuftop[local_ncols * 6 * ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
-    recvbuftop[local_ncols * 2 * ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx];
     recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx];
   }
   for(int speed = 0; speed < NSPEEDS; speed++){
