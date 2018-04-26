@@ -801,11 +801,11 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, t_speed* cel
     local1 = halo_cells[x_w + (jj+1)*local_ncols].speeds[1]; /* east */
     local2 = halo_cells[ii + y_s*local_ncols].speeds[2]; /* north */
     local3 = halo_cells[x_e + (jj+1)*local_ncols].speeds[3]; /* west */
-    local4 = recvbuftop[jj].speeds[4]; //halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
+    local4 = recvbuftop[ii].speeds[4]; //halo_cells[ii + y_n*local_ncols].speeds[4]; /* south */
     local5 = halo_cells[x_w + y_s*local_ncols].speeds[5]; /* north-east */
     local6 = halo_cells[x_e + y_s*local_ncols].speeds[6]; /* north-west */
-    local7 = recvbuftop[jj].speeds[7]; //halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
-    local8 = recvbuftop[jj].speeds[8]; //halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
+    local7 = recvbuftop[ii].speeds[7]; //halo_cells[x_e + y_n*local_ncols].speeds[7]; /* south-west */
+    local8 = recvbuftop[ii].speeds[8]; //halo_cells[x_w + y_n*local_ncols].speeds[8]; /* south-east */
 
     // if (halo_cells[ii + (jj+1)*params.nx].speeds[0] == -1){ //REBOUND
     //   float tmp_speed;
