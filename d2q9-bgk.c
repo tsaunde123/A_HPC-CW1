@@ -327,7 +327,7 @@ int main(int argc, char* argv[])
   }
 
   //#pragma omp target teams distribute parallel for simd
-  #pragma omp target enter data map(to: halo_cells[0:halo_local_ncols*halo_local_nrows], halo_temp[0:halo_local_ncols*halo_local_nrows])
+  #pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -365,7 +365,7 @@ int main(int argc, char* argv[])
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  #pragma omp target exit data map(from: halo_cells[0:halo_local_ncols*halo_local_nrows], halo_temp[0:halo_local_ncols*halo_local_nrows])
+  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   if(rank != MASTER){
     for(int speed = 0; speed < NSPEEDS; speed++){
@@ -698,7 +698,7 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells
 
   int jj = 0;
   // #pragma omp simd
-  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:local_ncols])
+  #pragma omp target teams distribute parallel for map(tofrom:recvbufbottom[0:9*local_ncols])
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -707,11 +707,11 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells
 
     local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
     local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local2 = recvbufbottom[local_ncols * 2 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
     local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local5 = recvbufbottom[local_ncols * 5 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local6 = recvbufbottom[local_ncols * 6 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
     local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
     local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
@@ -822,7 +822,8 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells
   // }
 
   jj = local_nrows-1;
-  #pragma omp simd
+  //#pragma omp simd
+  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:9*local_ncols])
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -833,11 +834,11 @@ int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells
     local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
     local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local4 = recvbuftop[local_ncols * 4 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
     local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
     local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local7 = recvbuftop[local_ncols * 7 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local8 = recvbuftop[local_ncols * 8 + jj];//halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
