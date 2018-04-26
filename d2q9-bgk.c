@@ -674,11 +674,11 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
 
     local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
     local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local[2] = recvbufbottom[local_ncols * 2 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
     local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local[5] = recvbufbottom[local_ncols * 5 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local[6] = recvbufbottom[local_ncols * 6 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
     local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
     local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
@@ -800,11 +800,11 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
     local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
     local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local[4] = recvbuftop[local_ncols * 4 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
     local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
     local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local[7] = recvbuftop[local_ncols * 7 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local[8] = recvbuftop[local_ncols * 8 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
