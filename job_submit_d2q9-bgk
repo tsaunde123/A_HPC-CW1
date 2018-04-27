@@ -9,6 +9,7 @@
 #SBATCH --partition test #cpu
 #SBATCH --output d2q9-bgk.out
 
+#module load CUDA/8.0.44
 
 echo Running on host `hostname`
 echo Time is `date`
