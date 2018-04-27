@@ -323,14 +323,21 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  for (int tt = 0; tt < params.maxIters; tt++)
+  for (int tt = 0; tt < params.maxIters; tt+=2)
   {
+    //timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+    //float* swap_ptr = halo_cells;
+    //halo_cells = halo_temp;
+    //halo_temp = swap_ptr;
+    ////av_vels[tt] = av_velocity(params, cells, obstacles);
+    //av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
     timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
-    float* swap_ptr = halo_cells;
-    halo_cells = halo_temp;
-    halo_temp = swap_ptr;
-    //av_vels[tt] = av_velocity(params, cells, obstacles);
-    av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+
+    av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
+ 
+    timestep(params, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
+
+    av_vels[tt+1] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -347,6 +354,10 @@ int main(int argc, char* argv[])
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
+
+  //float* swap_ptr = halo_cells;
+  //halo_cells = halo_temp;
+  //halo_temp = swap_ptr;
 
   if(rank != MASTER){
     for(int speed = 0; speed < NSPEEDS; speed++){
