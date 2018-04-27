@@ -99,12 +99,12 @@ int calc_nrows_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
+int timestep(int params_nx, int params_ny, float params_density, float params_accel, float params_omega, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline);
-int accelerate_flow(const t_param params, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
+int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
-int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, float* halo_temp, MPI_Request request, MPI_Status status, int top, int bottom, int* halo_obs, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline);
 int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status, int top, int bottom, MPI_Request	send_top_request, MPI_Request recv_top_request, MPI_Request send_bottom_request,
@@ -138,11 +138,11 @@ int finalise(const t_param* params, float** cells_ptr, float** tmp_cells_ptr,
 
 /* Sum all the densities in the grid.
 ** The total should remain constant from one timestep to the next. */
-float total_density(const t_param params, float* cells);
+float total_density(int params_nx, int params_ny, float* cells);
 
 /* compute average velocity */
 float final_av_velocity(const t_param params, float* cells, int* obstacles);
-float av_velocity(const t_param params, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
+float av_velocity(int params_nx, int params_ny, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs);
 
 /* calculate Reynolds number */
@@ -221,6 +221,12 @@ int main(int argc, char* argv[])
   int not_extra_local_nrows;
   int tag = 0;
   int rest = params.ny % size;
+  int params_nx = params.nx;
+  int params_ny = params.ny;
+  float params_omega = params.omega;
+  float params_accel = params.accel;
+  float params_density = params.density;
+  int params_maxIters = params.maxIters;
 
   sendbuf = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
   recvbuf = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
@@ -323,7 +329,7 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  for (int tt = 0; tt < params.maxIters; tt+=2)
+  for (int tt = 0; tt < params_maxIters; tt+=2)
   {
     //timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
     //float* swap_ptr = halo_cells;
@@ -331,17 +337,17 @@ int main(int argc, char* argv[])
     //halo_temp = swap_ptr;
     ////av_vels[tt] = av_velocity(params, cells, obstacles);
     //av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
-    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+    timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
-    av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
- 
-    timestep(params, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
+    av_vels[tt] = av_velocity(params_nx, params_ny, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
 
-    av_vels[tt+1] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+    timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
+
+    av_vels[tt+1] = av_velocity(params_nx, params_ny, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
-    printf("tot density: %.12E\n", total_density(params, cells));
+    printf("tot density: %.12E\n", total_density(params_nx, params_ny, cells));
 #endif
   }
 
@@ -409,16 +415,16 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
+int timestep(int params_nx, int params_ny, float params_density, float params_accel, float params_omega, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline)
 {
-  if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
+  if(calc_nrows_from_rank(size-1, size, params_ny) == 1){
     if(rank == size-2){
-      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
+      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
   } else {
     if(rank == size-1){
-      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
+      accelerate_flow(params_nx, params_ny, params_accel, params_omega, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
   }
 
@@ -427,7 +433,7 @@ int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacle
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   //propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
 
-  propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
+  propagate_mid(params_nx, params_ny, params_omega, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
                 halo_temp, request, status, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
   // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
@@ -458,22 +464,22 @@ int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacle
 //  MPI_Irecv(recvbuftop, halo_local_ncols, top, 0, MPI_COMM_WORLD, &recv_top_request);
 //}
 
-int accelerate_flow(const t_param params, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols)
+int accelerate_flow(int params_nx, int params_ny, float params_accel, float params_density, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols)
 {
   /* compute weighting factors */
-  float w1 = params.density * params.accel / 9.f;
-  float w2 = params.density * params.accel / 36.f;
+  float w1 = params_density * params_accel / 9.f;
+  float w2 = params_density * params_accel / 36.f;
 
   /* modify the 2nd row of the grid */
   int h_jj;
   h_jj = (local_nrows == 1) ? local_nrows : local_nrows-1;
   int o_jj = local_nrows - 2;
-  int jj = params.ny-2;
+  int jj = params_ny-2;
 
-  int h_jj_mult_paramsnx = h_jj * params.nx;
+  int h_jj_mult_paramsnx = h_jj * params_nx;
 
   //#pragma omp target teams distribute parallel for //simd
-  for (int ii = 0; ii < params.nx; ii++)
+  for (int ii = 0; ii < params_nx; ii++)
   {
     // if the cell is not occupied and
     // we don't send a negative density
@@ -525,7 +531,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
   return EXIT_SUCCESS;
 }
 
-int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+int propagate_mid(int params_nx, int params_ny, float params_omega, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, float* halo_temp, MPI_Request request, MPI_Status status, int top,
               int bottom, int* halo_obs, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline)
 {
@@ -655,15 +661,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                        + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
       /* relaxation step */
-      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
     }
   }
 
@@ -776,19 +782,19 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                      - u_sq / (2.f * c_sq));
 
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
 
-    recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx];
-    recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx];
-    recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx];
+    recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx];
   } //Retrieve recvbufbottom from GPU here
   for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
     for(int jj = 0; jj < halo_local_ncols; jj++){
@@ -900,19 +906,19 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                      + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
 
-    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx];
-    recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx];
-    recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx];
+    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
   }//Retrieve recvbuftop from GPU here
   for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
     for(int jj = 0; jj < halo_local_ncols; jj++){
@@ -1330,7 +1336,7 @@ int collision_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int
   return EXIT_SUCCESS;
 }
 
-float av_velocity(const t_param params, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
+float av_velocity(int params_nx, int params_ny, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs)
 {
   int    tot_cells = 0;  /* no. of cells used in calculation */
@@ -1348,31 +1354,31 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int local_
     {
       /* ignore occupied cells */
       //if (!halo_obs[ii + (jj-1)*params.nax])
-      if(!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + jj*params.nx] == -1))
+      if(!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + jj*params_nx] == -1))
       {
         /* local density total */
         float local_density = 0.f;
 
         for (int kk = 0; kk < NSPEEDS; kk++)
         {
-          local_density += halo_cells[(local_ncols * (local_nrows+2)) * kk + ii + jj*params.nx];
+          local_density += halo_cells[(local_ncols * (local_nrows+2)) * kk + ii + jj*params_nx];
         }
 
         /* x-component of velocity */
-        float u_x = (halo_cells[(local_ncols * (local_nrows+2)) * 1 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params.nx]
-                      - (halo_cells[(local_ncols * (local_nrows+2)) * 3 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params.nx]))
+        float u_x = (halo_cells[(local_ncols * (local_nrows+2)) * 1 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params_nx]
+                      - (halo_cells[(local_ncols * (local_nrows+2)) * 3 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params_nx]))
                      / local_density;
         /* compute y velocity component */
-        float u_y = (halo_cells[(local_ncols * (local_nrows+2)) * 2 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params.nx]
-                      - (halo_cells[(local_ncols * (local_nrows+2)) * 4 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params.nx]))
+        float u_y = (halo_cells[(local_ncols * (local_nrows+2)) * 2 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params_nx]
+                      - (halo_cells[(local_ncols * (local_nrows+2)) * 4 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params_nx]))
                      / local_density;
         /* accumulate the norm of x- and y- velocity components */
         tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
@@ -1693,17 +1699,17 @@ float calc_reynolds(const t_param params, float* cells, int* obstacles)
   return final_av_velocity(params, cells, obstacles) * params.reynolds_dim / viscosity;
 }
 
-float total_density(const t_param params, float* cells)
+float total_density(int params_nx, int params_ny, float* cells)
 {
   float total = 0.f;  /* accumulator */
 
-  for (int jj = 0; jj < params.ny; jj++)
+  for (int jj = 0; jj < params_ny; jj++)
   {
-    for (int ii = 0; ii < params.nx; ii++)
+    for (int ii = 0; ii < params_nx; ii++)
     {
       for (int kk = 0; kk < NSPEEDS; kk++)
       {
-        total += cells[((params.nx*params.ny) * kk) + ii + jj*params.nx];
+        total += cells[((params_nx*params_ny) * kk) + ii + jj*params_nx];
         //total += cells[ii + jj*params.nx].speeds[kk];
       }
     }
