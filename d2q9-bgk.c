@@ -344,7 +344,7 @@ int main(int argc, char* argv[])
     // xnew = (iters % 2) ? x2 : x1;
     // xold = (iters % 2) ? x1 : x2;
     //av_vels[tt] = av_velocity(params, cells, obstacles);
-    av_vels[tt] = av_velocity(params_nx, params_ny, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+    av_vels[tt] = av_velocity(params_nx, params_ny, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
 
     timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, MPI_cell_type, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
