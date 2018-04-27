@@ -2,14 +2,14 @@
 
 #SBATCH --job-name d2q9-bgk
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node 28
+#SBATCH --ntasks-per-node 1
 #SBATCH --time 00:03:00
-##SBATCH --gres=gpu:1
-##SBATCH --partition gpu_veryshort
-#SBATCH --partition test #cpu
+#SBATCH --gres=gpu:1
+#SBATCH --partition gpu_veryshort
+##SBATCH --partition test #cpu
 #SBATCH --output d2q9-bgk.out
 
-#module load CUDA/8.0.44
+module load CUDA/8.0.44
 
 echo Running on host `hostname`
 echo Time is `date`
@@ -22,5 +22,5 @@ echo CPUs per node: $SLURM_JOB_CPUS_PER_NODE
 
 #! Run the parallel MPI executable (nodes*ppn)
 #mpirun ./d2q9-bgk input_128x128.params obstacles_128x128.dat
-mpirun -np 1 -env CUDA_VISIBLE_DEVICES 0 ./d2q9-bgk input_128x128.params obstacles_128x128.dat #: -np 1 -env CUDA_VISIBLE_DEVICES 1 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+mpirun -np 1 -env CUDA_VISIBLE_DEVICES 0 nvprof ./d2q9-bgk input_128x128.params obstacles_128x128.dat #: -np 1 -env CUDA_VISIBLE_DEVICES 1 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
 #nvprof --print-gpu-trace ./d2q9-bgk

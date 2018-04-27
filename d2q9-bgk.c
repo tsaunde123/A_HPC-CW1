@@ -561,7 +561,7 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
   //MIDDLE ROWS
   //#pragma omp target teams distribute parallel for collapse(2) //simd collapse(2)//map(to:halo_cells) map(from:halo_temp)
   for (int jj = 1; jj < local_nrows-1; jj++){
-  #pragma omp simd
+  //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
       int y_n = (jj+1) + 1;
       int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -680,8 +680,8 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
   //}
 
   int jj = 0;
-  #pragma omp simd
-  // #pragma omp target teams distribute parallel for map(tofrom:recvbufbottom[0:9*local_ncols])
+  //#pragma omp simd
+  //#pragma omp target teams distribute parallel for map(tofrom:recvbufbottom[0:9*local_ncols])
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -805,8 +805,8 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
   //}
 
   jj = local_nrows-1;
-  #pragma omp simd
-  // #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:9*local_ncols])
+  //#pragma omp simd
+  //#pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:9*local_ncols])
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
