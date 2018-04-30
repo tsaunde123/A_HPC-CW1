@@ -181,13 +181,6 @@ int main(int argc, char* argv[])
   float* sendbuf;       /* buffer to hold values to send */
   float* recvbuf;       /* buffer to hold received values */
   float* printbuf;      /* buffer to hold values for printing */
-  int params_nx = params.nx;            /* no. of cells in x-direction */
-  int params_ny = params.ny;            /* no. of cells in y-direction */
-  int params_maxIters = params.maxIters;      /* no. of iterations */
-  int params_reynolds_dim = params.reynolds_dim;  /* dimension for Reynolds number */
-  float params_density = params.density;       /* density per link */
-  float params_accel = params.accel;         /* density redistribution */
-  float params_omega = params.omega;
 
 
   /* parse the command line */
@@ -228,6 +221,13 @@ int main(int argc, char* argv[])
   int not_extra_local_nrows;
   int tag = 0;
   int rest = params.ny % size;
+  int params_nx = params.nx;            /* no. of cells in x-direction */
+  int params_ny = params.ny;            /* no. of cells in y-direction */
+  int params_maxIters = params.maxIters;      /* no. of iterations */
+  int params_reynolds_dim = params.reynolds_dim;  /* dimension for Reynolds number */
+  float params_density = params.density;       /* density per link */
+  float params_accel = params.accel;         /* density redistribution */
+  float params_omega = params.omega;
 
   sendbuf = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
   recvbuf = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
