@@ -138,7 +138,7 @@ int finalise(const t_param* params, float** cells_ptr, float** tmp_cells_ptr,
 
 /* Sum all the densities in the grid.
 ** The total should remain constant from one timestep to the next. */
-float total_density(const t_param params, float* cells);
+float total_density(int params_nx, int params_ny, float* cells);
 
 /* compute average velocity */
 float final_av_velocity(const t_param params, float* cells, int* obstacles);
@@ -348,7 +348,7 @@ int main(int argc, char* argv[])
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
-    printf("tot density: %.12E\n", total_density(params, cells));
+    printf("tot density: %.12E\n", total_density(params_nx, params_ny, cells));
 #endif
   }
 
@@ -1700,17 +1700,17 @@ float calc_reynolds(const t_param params, float* cells, int* obstacles)
   return final_av_velocity(params, cells, obstacles) * params.reynolds_dim / viscosity;
 }
 
-float total_density(const t_param params, float* cells)
+float total_density(int params_nx, int params_ny, float* cells)
 {
   float total = 0.f;  /* accumulator */
 
-  for (int jj = 0; jj < params.ny; jj++)
+  for (int jj = 0; jj < params_ny; jj++)
   {
-    for (int ii = 0; ii < params.nx; ii++)
+    for (int ii = 0; ii < params_nx; ii++)
     {
       for (int kk = 0; kk < NSPEEDS; kk++)
       {
-        total += cells[((params.nx*params.ny) * kk) + ii + jj*params.nx];
+        total += cells[((params_nx*params_ny) * kk) + ii + jj*params_nx];
         //total += cells[ii + jj*params.nx].speeds[kk];
       }
     }
