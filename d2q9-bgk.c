@@ -142,7 +142,7 @@ float total_density(const t_param params, float* cells);
 
 /* compute average velocity */
 float final_av_velocity(const t_param params, float* cells, int* obstacles);
-float av_velocity(const t_param params, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
+float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs);
 
 /* calculate Reynolds number */
@@ -340,11 +340,11 @@ int main(int argc, char* argv[])
     //av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
     timestep(params, params_nx, params_ny, params_density, params_accel, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
-    av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
+    av_vels[tt] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
 
     timestep(params, params_nx, params_ny, params_density, params_accel, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
-    av_vels[tt+1] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+    av_vels[tt+1] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
 int timestep(const t_param params, int params_nx, int params_ny, float params_density, float params_accel, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline)
 {
-  if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
+  if(calc_nrows_from_rank(size-1, size, params_ny) == 1){
     if(rank == size-2){
       accelerate_flow(params_nx, params_ny, params_density, params_accel, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
@@ -1337,7 +1337,7 @@ int collision_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, int
   return EXIT_SUCCESS;
 }
 
-float av_velocity(const t_param params, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
+float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, int local_ncols, float* halo_cells, int rank,
                   int size, MPI_Status status, int* halo_obs)
 {
   int    tot_cells = 0;  /* no. of cells used in calculation */
@@ -1355,31 +1355,31 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int local_
     {
       /* ignore occupied cells */
       //if (!halo_obs[ii + (jj-1)*params.nax])
-      if(!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + jj*params.nx] == -1))
+      if(!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + jj*params_nx] == -1))
       {
         /* local density total */
         float local_density = 0.f;
 
         for (int kk = 0; kk < NSPEEDS; kk++)
         {
-          local_density += halo_cells[(local_ncols * (local_nrows+2)) * kk + ii + jj*params.nx];
+          local_density += halo_cells[(local_ncols * (local_nrows+2)) * kk + ii + jj*params_nx];
         }
 
         /* x-component of velocity */
-        float u_x = (halo_cells[(local_ncols * (local_nrows+2)) * 1 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params.nx]
-                      - (halo_cells[(local_ncols * (local_nrows+2)) * 3 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params.nx]))
+        float u_x = (halo_cells[(local_ncols * (local_nrows+2)) * 1 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params_nx]
+                      - (halo_cells[(local_ncols * (local_nrows+2)) * 3 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params_nx]))
                      / local_density;
         /* compute y velocity component */
-        float u_y = (halo_cells[(local_ncols * (local_nrows+2)) * 2 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params.nx]
-                      + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params.nx]
-                      - (halo_cells[(local_ncols * (local_nrows+2)) * 4 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params.nx]
-                         + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params.nx]))
+        float u_y = (halo_cells[(local_ncols * (local_nrows+2)) * 2 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 5 + ii + jj*params_nx]
+                      + halo_cells[(local_ncols * (local_nrows+2)) * 6 + ii + jj*params_nx]
+                      - (halo_cells[(local_ncols * (local_nrows+2)) * 4 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 7 + ii + jj*params_nx]
+                         + halo_cells[(local_ncols * (local_nrows+2)) * 8 + ii + jj*params_nx]))
                      / local_density;
         /* accumulate the norm of x- and y- velocity components */
         tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
