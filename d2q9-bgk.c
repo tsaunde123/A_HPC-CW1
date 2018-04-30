@@ -99,9 +99,9 @@ int calc_nrows_from_rank(int rank, int size, int numRows);
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
+int timestep(const t_param params, int params_nx, int params_ny, float params_density, float params_accel, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline);
-int accelerate_flow(const t_param params, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
+int accelerate_flow(int params_nx, int params_ny, float params_density, float params_accel, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
 int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  for (int tt = 0; tt < params.maxIters; tt+=2)
+  for (int tt = 0; tt < params_maxIters; tt+=2)
   {
     //timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
     //float* swap_ptr = halo_cells;
@@ -338,11 +338,11 @@ int main(int argc, char* argv[])
     //halo_temp = swap_ptr;
     ////av_vels[tt] = av_velocity(params, cells, obstacles);
     //av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
-    timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+    timestep(params, params_nx, params_ny, params_density, params_accel, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
     av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
 
-    timestep(params, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
+    timestep(params, params_nx, params_ny, params_density, params_accel, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
     av_vels[tt+1] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
@@ -416,16 +416,16 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
+int timestep(const t_param params, int params_nx, int params_ny, float params_density, float params_accel, float* cells, float* tmp_cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols, int size, int rank, int halo_local_nrows, int halo_local_ncols, int nlr_nrows, float* halo_temp, MPI_Status status, int top,
  int bottom, MPI_Request request, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline)
 {
   if(calc_nrows_from_rank(size-1, size, params.ny) == 1){
     if(rank == size-2){
-      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
+      accelerate_flow(params_nx, params_ny, params_density, params_accel, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
   } else {
     if(rank == size-1){
-      accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
+      accelerate_flow(params_nx, params_ny, params_density, params_accel, cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols);
     }
   }
 
@@ -465,22 +465,22 @@ int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacle
 //  MPI_Irecv(recvbuftop, halo_local_ncols, top, 0, MPI_COMM_WORLD, &recv_top_request);
 //}
 
-int accelerate_flow(const t_param params, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols)
+int accelerate_flow(int params_nx, int params_ny, float params_density, float params_accel, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols)
 {
   /* compute weighting factors */
-  float w1 = params.density * params.accel / 9.f;
-  float w2 = params.density * params.accel / 36.f;
+  float w1 = params_density * params_accel / 9.f;
+  float w2 = params_density * params_accel / 36.f;
 
   /* modify the 2nd row of the grid */
   int h_jj;
   h_jj = (local_nrows == 1) ? local_nrows : local_nrows-1;
   int o_jj = local_nrows - 2;
-  int jj = params.ny-2;
+  int jj = params_ny-2;
 
-  int h_jj_mult_paramsnx = h_jj * params.nx;
+  int h_jj_mult_paramsnx = h_jj * params_nx;
 
   //#pragma omp target teams distribute parallel for //simd
-  for (int ii = 0; ii < params.nx; ii++)
+  for (int ii = 0; ii < params_nx; ii++)
   {
     // if the cell is not occupied and
     // we don't send a negative density
