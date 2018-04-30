@@ -181,6 +181,13 @@ int main(int argc, char* argv[])
   float* sendbuf;       /* buffer to hold values to send */
   float* recvbuf;       /* buffer to hold received values */
   float* printbuf;      /* buffer to hold values for printing */
+  int params_nx = params.nx;            /* no. of cells in x-direction */
+  int params_ny = params.ny;            /* no. of cells in y-direction */
+  int params_maxIters = params.maxIters;      /* no. of iterations */
+  int params_reynolds_dim = params.reynolds_dim;  /* dimension for Reynolds number */
+  float params_density = params.density;       /* density per link */
+  float params_accel = params.accel;         /* density redistribution */
+  float params_omega = params.omega;
 
 
   /* parse the command line */
@@ -334,7 +341,7 @@ int main(int argc, char* argv[])
     timestep(params, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
     av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
- 
+
     timestep(params, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
     av_vels[tt+1] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
