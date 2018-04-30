@@ -104,7 +104,7 @@ int timestep(const t_param params, int params_nx, int params_ny, float params_de
 int accelerate_flow(int params_nx, int params_ny, float params_density, float params_accel, float* cells, int* obstacles, float* halo_cells, int* halo_obs, int local_nrows, int local_ncols);
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows, int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp);
-int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, float* halo_temp, MPI_Request request, MPI_Status status, int top, int bottom, int* halo_obs, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline);
 int propagate_halo(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, t_speed* halo_temp, MPI_Request request, MPI_Status status, int top, int bottom, MPI_Request	send_top_request, MPI_Request recv_top_request, MPI_Request send_bottom_request,
@@ -434,7 +434,7 @@ int timestep(const t_param params, int params_nx, int params_ny, float params_de
   //accelerate_flow(params, cells, obstacles, halo_cells, halo_obs, local_nrows);
   //propagate(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size, halo_temp);
 
-  propagate_mid(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
+  propagate_mid(params_nx, params_omega, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
                 halo_temp, request, status, top, bottom, halo_obs, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
   // propagate_halo(params, cells, tmp_cells, halo_cells, local_ncols, local_nrows, nlr_nrows, halo_local_nrows, halo_local_ncols, rank, size,
@@ -532,7 +532,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*
   return EXIT_SUCCESS;
 }
 
-int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
+int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_cells, float* halo_cells, int local_ncols, int local_nrows, int nlr_nrows,
               int halo_local_nrows, int halo_local_ncols, int rank, int size, float* halo_temp, MPI_Request request, MPI_Status status, int top,
               int bottom, int* halo_obs, float* sendbuftop, float* sendbufbottom, float* recvbuftop, float* recvbufbottom, float* tmp_halo_topline, float* tmp_halo_bottomline)
 {
@@ -662,15 +662,15 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                        + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
       /* relaxation step */
-      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
     }
   }
 
@@ -783,19 +783,19 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                      - u_sq / (2.f * c_sq));
 
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
 
-    recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx];
-    recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx];
-    recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx];
+    recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx];
   } //Retrieve recvbufbottom from GPU here
   for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
     for(int jj = 0; jj < halo_local_ncols; jj++){
@@ -907,19 +907,19 @@ int propagate_mid(const t_param params, float* cells, float* tmp_cells, float* h
                                      + (u[8] * u[8]) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params.nx] = (local[0] == -1) ?   -1   : local[0] + params.omega * (d_equ[0] - local[0]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[3] : local[1] + params.omega * (d_equ[1] - local[1]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[4] : local[2] + params.omega * (d_equ[2] - local[2]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[1] : local[3] + params.omega * (d_equ[3] - local[3]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[2] : local[4] + params.omega * (d_equ[4] - local[4]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[7] : local[5] + params.omega * (d_equ[5] - local[5]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[8] : local[6] + params.omega * (d_equ[6] - local[6]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[5] : local[7] + params.omega * (d_equ[7] - local[7]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = (local[0] == -1) ? local[6] : local[8] + params.omega * (d_equ[8] - local[8]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
 
-    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params.nx];
-    recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params.nx];
-    recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params.nx];
+    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
   }//Retrieve recvbuftop from GPU here
   for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
     for(int jj = 0; jj < halo_local_ncols; jj++){
