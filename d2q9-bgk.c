@@ -571,7 +571,7 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
   MPI_Irecv(recvbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
 
   //MIDDLE ROWS
-  #pragma omp target teams distribute parallel for collapse(2) map(tofrom:halo_cells[0:9*local_ncols*(local_nrows)], halo_temp[0:9*local_ncols*(local_nrows)])
+  #pragma omp target teams distribute parallel for collapse(2) map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)], halo_temp[0:9*local_ncols*(local_nrows+2)])
   for (int jj = 1; jj < local_nrows-1; jj++){
   //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
