@@ -667,7 +667,7 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
                                        + (u8 * u8) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
       /* relaxation step */
-      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?    -1    : local0 + params_omega * (d_equ0 - local0);
+      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?   -1   : local0 + params_omega * (d_equ0 - local0);
       halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
       halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
       halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
@@ -761,8 +761,8 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
     d_equ0 = w0 * local_density
                * (1.f - u_sq / (2.f * c_sq));
     /* axis speeds: weight w1 */
-    d_equ1 = w1 * local_density * (1.f + u  c_sq
-                                 +(1 * u1) / (2.f * c_sq * _q)
+    d_equ1 = w1 * local_density * (1.f + u1 / c_sq
+                                     + (u1 * u1) / (2.f * c_sq * c_sq)
                                  - u_sq / (2.f * c_sq));
     d_equ2 = w1 * local_density * (1.f + u2 / c_sq
                                      + (u2 * u2) / (2.f * c_sq * c_sq)
@@ -788,7 +788,7 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
                                      - u_sq / (2.f * c_sq));
 
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?    -1    : local0 + params_omega * (d_equ0 - local0);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?   -1   : local0 + params_omega * (d_equ0 - local0);
     halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
     halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
     halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
@@ -912,7 +912,7 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
                                      + (u8 * u8) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?    -1    : local0 + params_omega * (d_equ0 - local0);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?   -1   : local0 + params_omega * (d_equ0 - local0);
     halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
     halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
     halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
