@@ -547,7 +547,8 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
 
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
 
-  float local[NSPEEDS];
+  // float local[NSPEEDS];
+  float local0, local1, local2, local3, local4, local5, local6, local7, local8;
 
   //Send top, receive bottom
   for(int speed = 0; speed < NSPEEDS; speed++){
@@ -570,7 +571,7 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
   MPI_Irecv(recvbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
 
   //MIDDLE ROWS
-  #pragma omp target teams distribute parallel for collapse(2) map(to:local[0:9]) map(tofrom:halo_cells[0:9*local_ncols*(local_nrows)], halo_temp[0:9*local_ncols*(local_nrows)])
+  #pragma omp target teams distribute parallel for collapse(2) map(tofrom:halo_cells[0:9*local_ncols*(local_nrows)], halo_temp[0:9*local_ncols*(local_nrows)])
   for (int jj = 1; jj < local_nrows-1; jj++){
   //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
@@ -579,15 +580,15 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
       int y_s = (jj+1) - 1;
       int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-      local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
-      local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-      local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
-      local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-      local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-      local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-      local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-      local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-      local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+      local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
+      local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
+      local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+      local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
+      local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+      local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+      local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+      local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+      local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
       // if (halo_obs[ii + jj*params.nx]){ //REBOUND
       //   float tmp_speed;
@@ -605,76 +606,76 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
       //   halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = tmp_speed;
       // } else{ //COLLISION
       /* compute local density total */
-      float local_density = local[0] + local[1] + local[2] + local[3] + local[4]+ local[5]+ local[6] + local[7] + local[8];
+      float local_density = local0 + local1 + local2 + local3 + local4+ local5+ local6 + local7 + local8;
       /* compute x velocity component */
-      float u_x = (local[1]
-                    + local[5]
-                    + local[8]
-                    - (local[3]
-                       + local[6]
-                       + local[7]))
+      float u_x = (local1
+                    + local5
+                    + local8
+                    - (local3
+                       + local6
+                       + local7))
                    / local_density;
       /* compute y velocity component */
-      float u_y = (local[2]
-                    + local[5]
-                    + local[6]
-                    - (local[4]
-                       + local[7]
-                       + local[8]))
+      float u_y = (local2
+                    + local5
+                    + local6
+                    - (local4
+                       + local7
+                       + local8))
                    / local_density;
       /* velocity squared */
       float u_sq = u_x * u_x + u_y * u_y;
       /* directional velocity components */
-      float u[NSPEEDS];
-      u[1] =   u_x;        /* east */
-      u[2] =         u_y;  /* north */
-      u[3] = - u_x;        /* west */
-      u[4] =       - u_y;  /* south */
-      u[5] =   u_x + u_y;  /* north-east */
-      u[6] = - u_x + u_y;  /* north-west */
-      u[7] = - u_x - u_y;  /* south-west */
-      u[8] =   u_x - u_y;  /* south-east */
+      float u1, u2, u3, u4, u5, u6, u7, u8; //u[NSPEEDS];
+      u1 =   u_x;        /* east */
+      u2 =         u_y;  /* north */
+      u3 = - u_x;        /* west */
+      u4 =       - u_y;  /* south */
+      u5 =   u_x + u_y;  /* north-east */
+      u6 = - u_x + u_y;  /* north-west */
+      u7 = - u_x - u_y;  /* south-west */
+      u8 =   u_x - u_y;  /* south-east */
       /* equilibrium densities */
-      float d_equ[NSPEEDS];
+      float d_equ0, d_equ1, d_equ2, d_equ3, d_equ4, d_equ5, d_equ6, d_equ7, d_equ8; //d_equ[NSPEEDS];
       /* zero velocity density: weight w0 */
-      d_equ[0] = w0 * local_density
+      d_equ0 = w0 * local_density
                  * (1.f - u_sq / (2.f * c_sq));
       /* axis speeds: weight w1 */
-      d_equ[1] = w1 * local_density * (1.f + u[1] / c_sq
-                                       + (u[1] * u[1]) / (2.f * c_sq * c_sq)
+      d_equ1 = w1 * local_density * (1.f + u1 / c_sq
+                                       + (u1 * u1) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
-      d_equ[2] = w1 * local_density * (1.f + u[2] / c_sq
-                                       + (u[2] * u[2]) / (2.f * c_sq * c_sq)
+      d_equ2 = w1 * local_density * (1.f + u2 / c_sq
+                                       + (u2 * u2) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
-      d_equ[3] = w1 * local_density * (1.f + u[3] / c_sq
-                                       + (u[3] * u[3]) / (2.f * c_sq * c_sq)
+      d_equ3 = w1 * local_density * (1.f + u3 / c_sq
+                                       + (u3 * u3) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
-      d_equ[4] = w1 * local_density * (1.f + u[4] / c_sq
-                                       + (u[4] * u[4]) / (2.f * c_sq * c_sq)
+      d_equ4 = w1 * local_density * (1.f + u4 / c_sq
+                                       + (u4 * u4) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
       /* diagonal speeds: weight w2 */
-      d_equ[5] = w2 * local_density * (1.f + u[5] / c_sq
-                                       + (u[5] * u[5]) / (2.f * c_sq * c_sq)
+      d_equ5 = w2 * local_density * (1.f + u5 / c_sq
+                                       + (u5 * u5) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
-      d_equ[6] = w2 * local_density * (1.f + u[6] / c_sq
-                                       + (u[6] * u[6]) / (2.f * c_sq * c_sq)
+      d_equ6 = w2 * local_density * (1.f + u6 / c_sq
+                                       + (u6 * u6) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
-      d_equ[7] = w2 * local_density * (1.f + u[7] / c_sq
-                                       + (u[7] * u[7]) / (2.f * c_sq * c_sq)
+      d_equ7 = w2 * local_density * (1.f + u7 / c_sq
+                                       + (u7 * u7) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
-      d_equ[8] = w2 * local_density * (1.f + u[8] / c_sq
-                                       + (u[8] * u[8]) / (2.f * c_sq * c_sq)
+      d_equ8 = w2 * local_density * (1.f + u8 / c_sq
+                                       + (u8 * u8) / (2.f * c_sq * c_sq)
                                        - u_sq / (2.f * c_sq));
       /* relaxation step */
-      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
-      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
+      halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?    -1    : local0 + params_omega * (d_equ0 - local0);
+      halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
+      halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
+      halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
+      halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local0 == -1) ? local2 : local4 + params_omega * (d_equ4 - local4);
+      halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local0 == -1) ? local7 : local5 + params_omega * (d_equ5 - local5);
+      halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local0 == -1) ? local8 : local6 + params_omega * (d_equ6 - local6);
+      halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
+      halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
     }
   }
 
@@ -699,15 +700,15 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
     int y_s = (jj+1) - 1;
     int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-    local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
-    local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local[2] = recvbufbottom[local_ncols * 2 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
-    local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local[4] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local[5] = recvbufbottom[local_ncols * 5 + x_w];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local[6] = recvbufbottom[local_ncols * 6 + x_e];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local[7] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local[8] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
+    local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
+    local2 = recvbufbottom[local_ncols * 2 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
+    local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local5 = recvbufbottom[local_ncols * 5 + x_w];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local6 = recvbufbottom[local_ncols * 6 + x_e];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
@@ -725,77 +726,77 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
     //   halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = tmp_speed;
     // } else{ //COLLISION
     /* compute local density total */
-    float local_density = local[0] + local[1] + local[2] + local[3] + local[4]+ local[5]+ local[6] + local[7] + local[8];
+    float local_density = local0 + local1 + local2 + local3 + local4+ local5+ local6 + local7 + local8;
     /* compute x velocity component */
-    float u_x = (local[1]
-                  + local[5]
-                  + local[8]
-                  - (local[3]
-                     + local[6]
-                     + local[7]))
+    float u_x = (local1
+                  + local5
+                  + local8
+                  - (local3
+                     + local6
+                     + local7))
                  / local_density;
     /* compute y velocity component */
-    float u_y = (local[2]
-                  + local[5]
-                  + local[6]
-                  - (local[4]
-                     + local[7]
-                     + local[8]))
+    float u_y = (local2
+                  + local5
+                  + local6
+                  - (local4
+                     + local7
+                     + local8))
                  / local_density;
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
     /* directional velocity components */
-    float u[NSPEEDS];
-    u[1] =   u_x;        /* east */
-    u[2] =         u_y;  /* north */
-    u[3] = - u_x;        /* west */
-    u[4] =       - u_y;  /* south */
-    u[5] =   u_x + u_y;  /* north-east */
-    u[6] = - u_x + u_y;  /* north-west */
-    u[7] = - u_x - u_y;  /* south-west */
-    u[8] =   u_x - u_y;  /* south-east */
+    float u1, u2, u3, u4, u5, u6, u7, u8;// u[NSPEEDS];
+    u1 =   u_x;        /* east */
+    u2 =         u_y;  /* north */
+    u3 = - u_x;        /* west */
+    u4 =       - u_y;  /* south */
+    u5 =   u_x + u_y;  /* north-east */
+    u6 = - u_x + u_y;  /* north-west */
+    u7 = - u_x - u_y;  /* south-west */
+    u8 =   u_x - u_y;  /* south-east */
     /* equilibrium densities */
-    float d_equ[NSPEEDS];
+    float d_equ0, d_equ1, d_equ2, d_equ3, d_equ4, d_equ5, d_equ6, d_equ7, d_equ8;// d_equ[NSPEEDS];
     /* zero velocity density: weight w0 */
-    d_equ[0] = w0 * local_density
+    d_equ0 = w0 * local_density
                * (1.f - u_sq / (2.f * c_sq));
     /* axis speeds: weight w1 */
-    d_equ[1] = w1 * local_density * (1.f + u[1] / c_sq
-                                     + (u[1] * u[1]) / (2.f * c_sq * c_sq)
+    d_equ1 = w1 * local_density * (1.f + u  c_sq
+                                 +(1 * u1) / (2.f * c_sq * _q)
+                                 - u_sq / (2.f * c_sq));
+    d_equ2 = w1 * local_density * (1.f + u2 / c_sq
+                                     + (u2 * u2) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[2] = w1 * local_density * (1.f + u[2] / c_sq
-                                     + (u[2] * u[2]) / (2.f * c_sq * c_sq)
+    d_equ3 = w1 * local_density * (1.f + u3 / c_sq
+                                     + (u3 * u3) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[3] = w1 * local_density * (1.f + u[3] / c_sq
-                                     + (u[3] * u[3]) / (2.f * c_sq * c_sq)
-                                     - u_sq / (2.f * c_sq));
-    d_equ[4] = w1 * local_density * (1.f + u[4] / c_sq
-                                     + (u[4] * u[4]) / (2.f * c_sq * c_sq)
+    d_equ4 = w1 * local_density * (1.f + u4 / c_sq
+                                     + (u4 * u4) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* diagonal speeds: weight w2 */
-    d_equ[5] = w2 * local_density * (1.f + u[5] / c_sq
-                                     + (u[5] * u[5]) / (2.f * c_sq * c_sq)
+    d_equ5 = w2 * local_density * (1.f + u5 / c_sq
+                                     + (u5 * u5) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[6] = w2 * local_density * (1.f + u[6] / c_sq
-                                     + (u[6] * u[6]) / (2.f * c_sq * c_sq)
+    d_equ6 = w2 * local_density * (1.f + u6 / c_sq
+                                     + (u6 * u6) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[7] = w2 * local_density * (1.f + u[7] / c_sq
-                                     + (u[7] * u[7]) / (2.f * c_sq * c_sq)
+    d_equ7 = w2 * local_density * (1.f + u7 / c_sq
+                                     + (u7 * u7) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[8] = w2 * local_density * (1.f + u[8] / c_sq
-                                     + (u[8] * u[8]) / (2.f * c_sq * c_sq)
+    d_equ8 = w2 * local_density * (1.f + u8 / c_sq
+                                     + (u8 * u8) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
 
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?    -1    : local0 + params_omega * (d_equ0 - local0);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local0 == -1) ? local2 : local4 + params_omega * (d_equ4 - local4);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local0 == -1) ? local7 : local5 + params_omega * (d_equ5 - local5);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local0 == -1) ? local8 : local6 + params_omega * (d_equ6 - local6);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
     recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx];
     recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
@@ -824,15 +825,15 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
     int y_s = (jj+1) - 1;
     int x_w = (ii == 0) ? (ii + halo_local_ncols - 1) : (ii - 1); //((ii+1) - 1);
 
-    local[0] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
-    local[1] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local[2] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
-    local[3] = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local[4] = recvbuftop[local_ncols * 4 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local[5] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local[6] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local[7] = recvbuftop[local_ncols * 7 + x_e];//halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local[8] = recvbuftop[local_ncols * 8 + x_w];//halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
+    local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
+    local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
+    local4 = recvbuftop[local_ncols * 4 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local7 = recvbuftop[local_ncols * 7 + x_e];//halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local8 = recvbuftop[local_ncols * 8 + x_w];//halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
@@ -850,76 +851,76 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
     //   halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params.nx] = tmp_speed;
     // } else{ //COLLISION
     /* compute local density total */
-    float local_density = local[0] + local[1] + local[2] + local[3] + local[4]+ local[5]+ local[6] + local[7] + local[8];
+    float local_density = local0 + local1 + local2 + local3 + local4+ local5+ local6 + local7 + local8;
     /* compute x velocity component */
-    float u_x = (local[1]
-                  + local[5]
-                  + local[8]
-                  - (local[3]
-                     + local[6]
-                     + local[7]))
+    float u_x = (local1
+                  + local5
+                  + local8
+                  - (local3
+                     + local6
+                     + local7))
                  / local_density;
     /* compute y velocity component */
-    float u_y = (local[2]
-                  + local[5]
-                  + local[6]
-                  - (local[4]
-                     + local[7]
-                     + local[8]))
+    float u_y = (local2
+                  + local5
+                  + local6
+                  - (local4
+                     + local7
+                     + local8))
                  / local_density;
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
     /* directional velocity components */
-    float u[NSPEEDS];
-    u[1] =   u_x;        /* east */
-    u[2] =         u_y;  /* north */
-    u[3] = - u_x;        /* west */
-    u[4] =       - u_y;  /* south */
-    u[5] =   u_x + u_y;  /* north-east */
-    u[6] = - u_x + u_y;  /* north-west */
-    u[7] = - u_x - u_y;  /* south-west */
-    u[8] =   u_x - u_y;  /* south-east */
+    float u1, u2, u3, u4, u5, u6, u7, u8;// u[NSPEEDS];
+    u1 =   u_x;        /* east */
+    u2 =         u_y;  /* north */
+    u3 = - u_x;        /* west */
+    u4 =       - u_y;  /* south */
+    u5 =   u_x + u_y;  /* north-east */
+    u6 = - u_x + u_y;  /* north-west */
+    u7 = - u_x - u_y;  /* south-west */
+    u8 =   u_x - u_y;  /* south-east */
     /* equilibrium densities */
-    float d_equ[NSPEEDS];
+    float d_equ0, d_equ1, d_equ2, d_equ3, d_equ4, d_equ5, d_equ6, d_equ7, d_equ8;// d_equ[NSPEEDS];
     /* zero velocity density: weight w0 */
-    d_equ[0] = w0 * local_density
+    d_equ0 = w0 * local_density
                * (1.f - u_sq / (2.f * c_sq));
     /* axis speeds: weight w1 */
-    d_equ[1] = w1 * local_density * (1.f + u[1] / c_sq
-                                     + (u[1] * u[1]) / (2.f * c_sq * c_sq)
+    d_equ1 = w1 * local_density * (1.f + u1 / c_sq
+                                     + (u1 * u1) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[2] = w1 * local_density * (1.f + u[2] / c_sq
-                                     + (u[2] * u[2]) / (2.f * c_sq * c_sq)
+    d_equ2 = w1 * local_density * (1.f + u2 / c_sq
+                                     + (u2 * u2) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[3] = w1 * local_density * (1.f + u[3] / c_sq
-                                     + (u[3] * u[3]) / (2.f * c_sq * c_sq)
+    d_equ3 = w1 * local_density * (1.f + u3 / c_sq
+                                     + (u3 * u3) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[4] = w1 * local_density * (1.f + u[4] / c_sq
-                                     + (u[4] * u[4]) / (2.f * c_sq * c_sq)
+    d_equ4 = w1 * local_density * (1.f + u4 / c_sq
+                                     + (u4 * u4) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* diagonal speeds: weight w2 */
-    d_equ[5] = w2 * local_density * (1.f + u[5] / c_sq
-                                     + (u[5] * u[5]) / (2.f * c_sq * c_sq)
+    d_equ5 = w2 * local_density * (1.f + u5 / c_sq
+                                     + (u5 * u5) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[6] = w2 * local_density * (1.f + u[6] / c_sq
-                                     + (u[6] * u[6]) / (2.f * c_sq * c_sq)
+    d_equ6 = w2 * local_density * (1.f + u6 / c_sq
+                                     + (u6 * u6) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[7] = w2 * local_density * (1.f + u[7] / c_sq
-                                     + (u[7] * u[7]) / (2.f * c_sq * c_sq)
+    d_equ7 = w2 * local_density * (1.f + u7 / c_sq
+                                     + (u7 * u7) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
-    d_equ[8] = w2 * local_density * (1.f + u[8] / c_sq
-                                     + (u[8] * u[8]) / (2.f * c_sq * c_sq)
+    d_equ8 = w2 * local_density * (1.f + u8 / c_sq
+                                     + (u8 * u8) / (2.f * c_sq * c_sq)
                                      - u_sq / (2.f * c_sq));
     /* relaxation step */
-    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local[0] == -1) ?    -1    : local[0] + params_omega * (d_equ[0] - local[0]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[3] : local[1] + params_omega * (d_equ[1] - local[1]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[4] : local[2] + params_omega * (d_equ[2] - local[2]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[1] : local[3] + params_omega * (d_equ[3] - local[3]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[2] : local[4] + params_omega * (d_equ[4] - local[4]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[7] : local[5] + params_omega * (d_equ[5] - local[5]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[8] : local[6] + params_omega * (d_equ[6] - local[6]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[5] : local[7] + params_omega * (d_equ[7] - local[7]);
-    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local[0] == -1) ? local[6] : local[8] + params_omega * (d_equ[8] - local[8]);
+    halo_temp[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*params_nx] = (local0 == -1) ?    -1    : local0 + params_omega * (d_equ0 - local0);
+    halo_temp[(local_ncols*(local_nrows+2)) * 1 + ii + (jj+1)*params_nx] = (local0 == -1) ? local3 : local1 + params_omega * (d_equ1 - local1);
+    halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx] = (local0 == -1) ? local4 : local2 + params_omega * (d_equ2 - local2);
+    halo_temp[(local_ncols*(local_nrows+2)) * 3 + ii + (jj+1)*params_nx] = (local0 == -1) ? local1 : local3 + params_omega * (d_equ3 - local3);
+    halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx] = (local0 == -1) ? local2 : local4 + params_omega * (d_equ4 - local4);
+    halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx] = (local0 == -1) ? local7 : local5 + params_omega * (d_equ5 - local5);
+    halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx] = (local0 == -1) ? local8 : local6 + params_omega * (d_equ6 - local6);
+    halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
+    halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
     recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx];
     recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx];
