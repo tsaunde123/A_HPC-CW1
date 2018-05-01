@@ -324,7 +324,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  #pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
+  //#pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -360,7 +360,7 @@ int main(int argc, char* argv[])
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
+  //#pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows])//, halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   //float* swap_ptr = halo_cells;
   //halo_cells = halo_temp;
@@ -470,16 +470,20 @@ int accelerate_flow(int params_nx, int params_ny, float params_density, float pa
   /* compute weighting factors */
   float w1 = params_density * params_accel / 9.f;
   float w2 = params_density * params_accel / 36.f;
-
+  int gpu_start_idx;
+  int gpu_end_idx;
   /* modify the 2nd row of the grid */
   int h_jj;
   h_jj = (local_nrows == 1) ? local_nrows : local_nrows-1;
+  //gpu_start_idx = (local_nrows == 1) ? 9*local_ncols*(local_nrows) : 9*local_ncols*(local_nrows-1);
+  //gpu_end_idx = (local_nrows == 1) ? 9*local_ncols*(local_nrows) : 9*local_ncols*(local_nrows-1);
   int o_jj = local_nrows - 2;
   int jj = params_ny-2;
 
   int h_jj_mult_paramsnx = h_jj * params_nx;
 
   //#pragma omp target teams distribute parallel for //simd
+  #pragma omp target teams distribute parallel for map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)]) //map(tofrom:halo_cells[9*local_ncols*(h_jj):9*local_ncols*(h_jj)+(1*local_ncols)])
   for (int ii = 0; ii < params_nx; ii++)
   {
     // if the cell is not occupied and
@@ -566,7 +570,7 @@ int propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_ce
   MPI_Irecv(recvbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
 
   //MIDDLE ROWS
-  //#pragma omp target teams distribute parallel for collapse(2) //simd collapse(2)//map(to:halo_cells) map(from:halo_temp)
+  #pragma omp target teams distribute parallel for collapse(2) map(to:local[0:9]) map(tofrom:halo_cells[0:9*local_ncols*(local_nrows)], halo_temp[0:9*local_ncols*(local_nrows)])
   for (int jj = 1; jj < local_nrows-1; jj++){
   //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
@@ -1349,6 +1353,7 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
   tot_u = 0.f;
 
   /* loop over all non-blocked cells */
+  //#pragma omp target teams distribute parallel for collapse(2) map(to:halo_cells[0:9*local_ncols*(local_nrows+2)]) map(tofrom:tot_u,tot_cells)
   for (int jj = 1; jj < local_nrows+1; jj++)
   {
     for (int ii = 0; ii < local_ncols; ii++)
