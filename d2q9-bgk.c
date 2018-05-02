@@ -487,7 +487,7 @@ int accelerate_flow(int params_nx, int params_ny, float params_density, float pa
   int h_jj_mult_paramsnx = h_jj * params_nx;
 
   //#pragma omp target teams distribute parallel for //simd
-  #pragma omp target teams distribute parallel for //map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)]) //map(tofrom:halo_cells[9*local_ncols*(h_jj):9*local_ncols*(h_jj)+(1*local_ncols)])
+  #pragma omp target teams distribute parallel for //map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)])
   for (int ii = 0; ii < params_nx; ii++)
   {
     // if the cell is not occupied and
@@ -825,7 +825,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx];
   } //Retrieve recvbufbottom from GPU here
   // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
-  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
+  for(int jj = 0; jj < halo_local_ncols; jj++){
     tmp_halo_bottomline[local_ncols * 4 + jj] = recvbufbottom[local_ncols * 4 + jj];
     tmp_halo_bottomline[local_ncols * 7 + jj] = recvbufbottom[local_ncols * 7 + jj];
     tmp_halo_bottomline[local_ncols * 8 + jj] = recvbufbottom[local_ncols * 8 + jj];
@@ -957,7 +957,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
   }//Retrieve recvbuftop from GPU here
   // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
-  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
+  for(int jj = 0; jj < halo_local_ncols; jj++){
     tmp_halo_topline[local_ncols * 2 + jj] = recvbuftop[local_ncols * 2 + jj];
     tmp_halo_topline[local_ncols * 5 + jj] = recvbuftop[local_ncols * 5 + jj];
     tmp_halo_topline[local_ncols * 6 + jj] = recvbuftop[local_ncols * 6 + jj];
@@ -1390,7 +1390,7 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
   tot_u = 0.f;
 
   /* loop over all non-blocked cells */
-  #pragma omp target teams distribute parallel for collapse(2) reduction(+:tot_u,tot_cells) map(tofrom:tot_u,tot_cells)
+  #pragma omp target teams distribute parallel for collapse(2) reduction(+:tot_u,tot_cells) map(from:tot_u,tot_cells)
   for (int jj = 1; jj < local_nrows+1; jj++)
   {
     for (int ii = 0; ii < local_ncols; ii++)
