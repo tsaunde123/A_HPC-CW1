@@ -249,10 +249,10 @@ int main(int argc, char* argv[])
   int* recvobuf = (int*)malloc(sizeof(int) * extra_local_nrows * local_ncols);
 
   /* Buffers for async halo_ex */
-  float* sendbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* sendbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* recvbuftop = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* recvbufbottom = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* sendbuftop = (float*)malloc(sizeof(float) * 3 * local_ncols);
+  float* sendbufbottom = (float*)malloc(sizeof(float) * 3 * local_ncols);
+  float* recvbuftop = (float*)malloc(sizeof(float) * 3 * local_ncols);
+  float* recvbufbottom = (float*)malloc(sizeof(float) * 3 * local_ncols);
 
   if(rank == MASTER){
     for(int speed = 0; speed < NSPEEDS; speed++){
@@ -309,22 +309,22 @@ int main(int argc, char* argv[])
     }
   }
 
-  float* tmp_halo_topline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
-  float* tmp_halo_bottomline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
+  float* tmp_halo_topline = (float*)malloc(sizeof(float) * 3 * local_ncols);
+  float* tmp_halo_bottomline = (float*)malloc(sizeof(float) * 3 * local_ncols);
 
   // for(int speed = 0; speed < NSPEEDS; speed++){
   for(int jj = 0; jj < halo_local_ncols; jj++){
-    tmp_halo_topline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (local_nrows*local_ncols)];
-    tmp_halo_topline[local_ncols * 5 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + jj + (local_nrows*local_ncols)];
-    tmp_halo_topline[local_ncols * 6 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + jj + (local_nrows*local_ncols)];
+    tmp_halo_topline[local_ncols * 0 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + jj + (local_nrows*local_ncols)]; //speed 2
+    tmp_halo_topline[local_ncols * 1 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + jj + (local_nrows*local_ncols)]; //speed 5
+    tmp_halo_topline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (local_nrows*local_ncols)]; //speed 6
   }
   // }
 
   // for(int speed = 0; speed < NSPEEDS; speed++){
   for(int jj = 0; jj < halo_local_ncols; jj++){
-    tmp_halo_bottomline[local_ncols * 4 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + jj + (halo_local_ncols*1)];
-    tmp_halo_bottomline[local_ncols * 7 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + jj + (halo_local_ncols*1)];
-    tmp_halo_bottomline[local_ncols * 8 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + jj + (halo_local_ncols*1)];
+    tmp_halo_bottomline[local_ncols * 0 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + jj + (halo_local_ncols*1)]; //speed 4
+    tmp_halo_bottomline[local_ncols * 1 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + jj + (halo_local_ncols*1)]; //speed 7
+    tmp_halo_bottomline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (halo_local_ncols*1)]; //speed 8
   }
   // }
 
@@ -365,6 +365,7 @@ int main(int argc, char* argv[])
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
   #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows])//, halo_temp[0:9*halo_local_ncols*halo_local_nrows])
+  //cudaProfilerStop();
 
   //float* swap_ptr = halo_cells;
   //halo_cells = halo_temp;
@@ -548,8 +549,8 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
   const float w0 = 4.f / 9.f;  /* weighting factor */
   const float w1 = 1.f / 9.f;  /* weighting factor */
   const float w2 = 1.f / 36.f; /* weighting factor */
-  int    tot_cells = 0;  /* no. of cells used in calculation */
-  float tot_u;          /* accumulated magnitudes of velocity for each cell */
+  //int    tot_cells = 0;  /* no. of cells used in calculation */
+  //float tot_u;          /* accumulated magnitudes of velocity for each cell */
 
   MPI_Request	send_top_request,recv_top_request,send_bottom_request,recv_bottom_request;
 
@@ -558,10 +559,10 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
 
   //Send top, receive bottom
   // for(int speed = 0; speed < NSPEEDS; speed++){
-  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
-    sendbuftop[local_ncols * 2 + jj] = tmp_halo_topline[local_ncols * 2 + jj];
-    sendbuftop[local_ncols * 5 + jj] = tmp_halo_topline[local_ncols * 5 + jj];
-    sendbuftop[local_ncols * 6 + jj] = tmp_halo_topline[local_ncols * 6 + jj];
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbuftop[local_ncols * 0 + jj] = tmp_halo_topline[local_ncols * 0 + jj]; //speed 2
+    sendbuftop[local_ncols * 1 + jj] = tmp_halo_topline[local_ncols * 1 + jj]; //speed 5
+    sendbuftop[local_ncols * 2 + jj] = tmp_halo_topline[local_ncols * 2 + jj]; //speed 6
     //sendbuftop[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*local_nrows)];
   }
   // }
@@ -570,10 +571,10 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
 
   //Send bottom, receive top
   // for(int speed = 0; speed < NSPEEDS; speed++){
-  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
-    sendbufbottom[local_ncols * 4 + jj] = tmp_halo_bottomline[local_ncols * 4 + jj];
-    sendbufbottom[local_ncols * 7 + jj] = tmp_halo_bottomline[local_ncols * 7 + jj];
-    sendbufbottom[local_ncols * 8 + jj] = tmp_halo_bottomline[local_ncols * 8 + jj];
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    sendbufbottom[local_ncols * 0 + jj] = tmp_halo_bottomline[local_ncols * 0 + jj]; //speed 4
+    sendbufbottom[local_ncols * 1 + jj] = tmp_halo_bottomline[local_ncols * 1 + jj]; //speed 7
+    sendbufbottom[local_ncols * 2 + jj] = tmp_halo_bottomline[local_ncols * 2 + jj]; //speed 8
     //sendbufbottom[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*1)];
   }
   // }
@@ -718,11 +719,11 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
 
     local0 = halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + (jj+1)*halo_local_ncols]; /* central cell, no movement */
     local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
-    local2 = recvbufbottom[local_ncols * 2 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
+    local2 = recvbufbottom[local_ncols * 0 + ii]; //speed 2  //halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
     local4 = halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
-    local5 = recvbufbottom[local_ncols * 5 + x_w];//halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
-    local6 = recvbufbottom[local_ncols * 6 + x_e];//halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
+    local5 = recvbufbottom[local_ncols * 1 + x_w]; //speed 5  //halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
+    local6 = recvbufbottom[local_ncols * 2 + x_e]; //speed 6  //halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
     local7 = halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
     local8 = halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
@@ -820,15 +821,15 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
     halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
-    recvbufbottom[local_ncols * 4 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx];
-    recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
-    recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx];
+    recvbufbottom[local_ncols * 0 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 4 + ii + (jj+1)*params_nx]; //speed 4
+    recvbufbottom[local_ncols * 1 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx]; //speed 7
+    recvbufbottom[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx]; //speed 8
   } //Retrieve recvbufbottom from GPU here
   // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
   for(int jj = 0; jj < halo_local_ncols; jj++){
-    tmp_halo_bottomline[local_ncols * 4 + jj] = recvbufbottom[local_ncols * 4 + jj];
-    tmp_halo_bottomline[local_ncols * 7 + jj] = recvbufbottom[local_ncols * 7 + jj];
-    tmp_halo_bottomline[local_ncols * 8 + jj] = recvbufbottom[local_ncols * 8 + jj];
+    tmp_halo_bottomline[local_ncols * 0 + jj] = recvbufbottom[local_ncols * 0 + jj]; //speed 4
+    tmp_halo_bottomline[local_ncols * 1 + jj] = recvbufbottom[local_ncols * 1 + jj]; //speed 7
+    tmp_halo_bottomline[local_ncols * 2 + jj] = recvbufbottom[local_ncols * 2 + jj]; //speed 8
   }
   // }
 
@@ -853,11 +854,11 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     local1 = halo_cells[(local_ncols*(local_nrows+2)) * 1 + x_w + (jj+1)*local_ncols]; /* east */
     local2 = halo_cells[(local_ncols*(local_nrows+2)) * 2 + ii + y_s*local_ncols]; /* north */
     local3 = halo_cells[(local_ncols*(local_nrows+2)) * 3 + x_e + (jj+1)*local_ncols]; /* west */
-    local4 = recvbuftop[local_ncols * 4 + ii];//halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
+    local4 = recvbuftop[local_ncols * 0 + ii]; //speed 4  //halo_cells[(local_ncols*(local_nrows+2)) * 4 + ii + y_n*local_ncols]; /* south */
     local5 = halo_cells[(local_ncols*(local_nrows+2)) * 5 + x_w + y_s*local_ncols]; /* north-east */
     local6 = halo_cells[(local_ncols*(local_nrows+2)) * 6 + x_e + y_s*local_ncols]; /* north-west */
-    local7 = recvbuftop[local_ncols * 7 + x_e];//halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
-    local8 = recvbuftop[local_ncols * 8 + x_w];//halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
+    local7 = recvbuftop[local_ncols * 1 + x_e]; //speed 7  //halo_cells[(local_ncols*(local_nrows+2)) * 7 + x_e + y_n*local_ncols]; /* south-west */
+    local8 = recvbuftop[local_ncols * 2 + x_w]; //speed 8  //halo_cells[(local_ncols*(local_nrows+2)) * 8 + x_w + y_n*local_ncols]; /* south-east */
 
     // if (halo_obs[ii + jj*params.nx]){ //REBOUND
     //   float tmp_speed;
@@ -952,15 +953,15 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx] = (local0 == -1) ? local5 : local7 + params_omega * (d_equ7 - local7);
     halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx] = (local0 == -1) ? local6 : local8 + params_omega * (d_equ8 - local8);
 
-    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx];
-    recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx];
-    recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
+    recvbuftop[local_ncols * 0 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 2 + ii + (jj+1)*params_nx]; //speed 2
+    recvbuftop[local_ncols * 1 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx]; //speed 5
+    recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx]; //speed 6
   }//Retrieve recvbuftop from GPU here
   // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
   for(int jj = 0; jj < halo_local_ncols; jj++){
-    tmp_halo_topline[local_ncols * 2 + jj] = recvbuftop[local_ncols * 2 + jj];
-    tmp_halo_topline[local_ncols * 5 + jj] = recvbuftop[local_ncols * 5 + jj];
-    tmp_halo_topline[local_ncols * 6 + jj] = recvbuftop[local_ncols * 6 + jj];
+    tmp_halo_topline[local_ncols * 0 + jj] = recvbuftop[local_ncols * 0 + jj]; //speed 2
+    tmp_halo_topline[local_ncols * 1 + jj] = recvbuftop[local_ncols * 1 + jj]; //speed 5
+    tmp_halo_topline[local_ncols * 2 + jj] = recvbuftop[local_ncols * 2 + jj]; //speed 6
   }
   // }
 
