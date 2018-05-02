@@ -360,7 +360,7 @@ int main(int argc, char* argv[])
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
+  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows])//, halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
   //float* swap_ptr = halo_cells;
   //halo_cells = halo_temp;
