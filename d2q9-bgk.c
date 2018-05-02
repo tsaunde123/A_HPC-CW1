@@ -312,17 +312,21 @@ int main(int argc, char* argv[])
   float* tmp_halo_topline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
   float* tmp_halo_bottomline = (float*)malloc(sizeof(float) * NSPEEDS * local_ncols);
 
-  for(int speed = 0; speed < NSPEEDS; speed++){
-    for(int jj = 0; jj < halo_local_ncols; jj++){
-      tmp_halo_topline[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (local_nrows*local_ncols)];
-    }
+  // for(int speed = 0; speed < NSPEEDS; speed++){
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    tmp_halo_topline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (local_nrows*local_ncols)];
+    tmp_halo_topline[local_ncols * 5 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + jj + (local_nrows*local_ncols)];
+    tmp_halo_topline[local_ncols * 6 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + jj + (local_nrows*local_ncols)];
   }
+  // }
 
-  for(int speed = 0; speed < NSPEEDS; speed++){
-    for(int jj = 0; jj < halo_local_ncols; jj++){
-      tmp_halo_bottomline[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*1)];
-    }
+  // for(int speed = 0; speed < NSPEEDS; speed++){
+  for(int jj = 0; jj < halo_local_ncols; jj++){
+    tmp_halo_bottomline[local_ncols * 4 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + jj + (halo_local_ncols*1)];
+    tmp_halo_bottomline[local_ncols * 7 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + jj + (halo_local_ncols*1)];
+    tmp_halo_bottomline[local_ncols * 8 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + jj + (halo_local_ncols*1)];
   }
+  // }
 
   #pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows])
 
@@ -553,24 +557,28 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
   float local0, local1, local2, local3, local4, local5, local6, local7, local8;
 
   //Send top, receive bottom
-  for(int speed = 0; speed < NSPEEDS; speed++){
-    for(int jj = 0; jj < halo_local_ncols; jj++){
-      sendbuftop[local_ncols * speed + jj] = tmp_halo_topline[local_ncols * speed + jj];
-      //sendbuftop[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*local_nrows)];
-    }
+  // for(int speed = 0; speed < NSPEEDS; speed++){
+  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
+    sendbuftop[local_ncols * 2 + jj] = tmp_halo_topline[local_ncols * 2 + jj];
+    sendbuftop[local_ncols * 5 + jj] = tmp_halo_topline[local_ncols * 5 + jj];
+    sendbuftop[local_ncols * 6 + jj] = tmp_halo_topline[local_ncols * 6 + jj];
+    //sendbuftop[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*local_nrows)];
   }
-  MPI_Isend(sendbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &send_top_request);
-  MPI_Irecv(recvbufbottom, 9*halo_local_ncols, MPI_FLOAT, bottom, 0, MPI_COMM_WORLD, &recv_bottom_request);
+  // }
+  MPI_Isend(sendbuftop, 3*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &send_top_request);
+  MPI_Irecv(recvbufbottom, 3*halo_local_ncols, MPI_FLOAT, bottom, 0, MPI_COMM_WORLD, &recv_bottom_request);
 
   //Send bottom, receive top
-  for(int speed = 0; speed < NSPEEDS; speed++){
-    for(int jj = 0; jj < halo_local_ncols; jj++){
-      sendbufbottom[local_ncols * speed + jj] = tmp_halo_bottomline[local_ncols * speed + jj];
-      //sendbufbottom[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*1)];
-    }
+  // for(int speed = 0; speed < NSPEEDS; speed++){
+  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
+    sendbufbottom[local_ncols * 4 + jj] = tmp_halo_bottomline[local_ncols * 4 + jj];
+    sendbufbottom[local_ncols * 7 + jj] = tmp_halo_bottomline[local_ncols * 7 + jj];
+    sendbufbottom[local_ncols * 8 + jj] = tmp_halo_bottomline[local_ncols * 8 + jj];
+    //sendbufbottom[local_ncols * speed + jj] = halo_cells[(local_ncols*(local_nrows+2)) * speed + jj + (halo_local_ncols*1)];
   }
-  MPI_Isend(sendbufbottom, 9*halo_local_ncols, MPI_FLOAT, bottom, 0, MPI_COMM_WORLD, &send_bottom_request);
-  MPI_Irecv(recvbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
+  // }
+  MPI_Isend(sendbufbottom, 3*halo_local_ncols, MPI_FLOAT, bottom, 0, MPI_COMM_WORLD, &send_bottom_request);
+  MPI_Irecv(recvbuftop, 3*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
 
   //MIDDLE ROWS
   #pragma omp target teams distribute parallel for collapse(2) //map(to:tot_u,tot_cells)/*map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)])*/ //map(tofrom:halo_temp[0:9*local_ncols*(local_nrows+2)])
@@ -701,7 +709,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
 
   int jj = 0;
   //#pragma omp simd
-  #pragma omp target teams distribute parallel for map(tofrom:recvbufbottom[0:9*local_ncols])
+  #pragma omp target teams distribute parallel for map(tofrom:recvbufbottom[0:3*local_ncols])
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -751,7 +759,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
                      + local7
                      + local8))
                  / local_density;
-    
+
     ///* accumulate the norm of x- and y- velocity components */
     //tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
     ///* increase counter of inspected cells */
@@ -816,11 +824,13 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     recvbufbottom[local_ncols * 7 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx];
     recvbufbottom[local_ncols * 8 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx];
   } //Retrieve recvbufbottom from GPU here
-  for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
-    for(int jj = 0; jj < halo_local_ncols; jj++){
-      tmp_halo_bottomline[local_ncols * speed + jj] = recvbufbottom[local_ncols * speed + jj];
-    }
+  // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
+  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
+    tmp_halo_bottomline[local_ncols * 4 + jj] = recvbufbottom[local_ncols * 4 + jj];
+    tmp_halo_bottomline[local_ncols * 7 + jj] = recvbufbottom[local_ncols * 7 + jj];
+    tmp_halo_bottomline[local_ncols * 8 + jj] = recvbufbottom[local_ncols * 8 + jj];
   }
+  // }
 
   MPI_Wait(&send_bottom_request, &status);
   MPI_Wait(&recv_top_request, &status);
@@ -832,7 +842,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
 
   jj = local_nrows-1;
   //#pragma omp simd
-  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:9*local_ncols]) //map(from:tot_u,tot_cells) reduction(+:tot_u,tot_cells)
+  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:3*local_ncols]) //map(from:tot_u,tot_cells) reduction(+:tot_u,tot_cells)
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -882,12 +892,12 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
                      + local7
                      + local8))
                  / local_density;
-    
+
     ///* accumulate the norm of x- and y- velocity components */
     //tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
     ///* increase counter of inspected cells */
     //++tot_cells;
- 
+
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
     /* directional velocity components */
@@ -946,11 +956,13 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     recvbuftop[local_ncols * 5 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx];
     recvbuftop[local_ncols * 6 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx];
   }//Retrieve recvbuftop from GPU here
-  for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
-    for(int jj = 0; jj < halo_local_ncols; jj++){
-      tmp_halo_topline[local_ncols * speed + jj] = recvbuftop[local_ncols * speed + jj];
-    }
+  // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
+  for(int jj = 0; jj < 3*halo_local_ncols; jj++){
+    tmp_halo_topline[local_ncols * 2 + jj] = recvbuftop[local_ncols * 2 + jj];
+    tmp_halo_topline[local_ncols * 5 + jj] = recvbuftop[local_ncols * 5 + jj];
+    tmp_halo_topline[local_ncols * 6 + jj] = recvbuftop[local_ncols * 6 + jj];
   }
+  // }
 
   //if(rank == MASTER){
   //  return tot_u / (float)tot_cells;
