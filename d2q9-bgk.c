@@ -314,17 +314,17 @@ int main(int argc, char* argv[])
 
   // for(int speed = 0; speed < NSPEEDS; speed++){
   for(int jj = 0; jj < halo_local_ncols; jj++){
-    tmp_halo_topline[local_ncols * 0 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + jj + (local_nrows*local_ncols)]; //speed 2
-    tmp_halo_topline[local_ncols * 1 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + jj + (local_nrows*local_ncols)]; //speed 5
-    tmp_halo_topline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (local_nrows*local_ncols)]; //speed 6
+    tmp_halo_topline[local_ncols * 0 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (local_nrows*local_ncols)]; //speed 2
+    tmp_halo_topline[local_ncols * 1 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 5 + jj + (local_nrows*local_ncols)]; //speed 5
+    tmp_halo_topline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 6 + jj + (local_nrows*local_ncols)]; //speed 6
   }
   // }
 
   // for(int speed = 0; speed < NSPEEDS; speed++){
   for(int jj = 0; jj < halo_local_ncols; jj++){
-    tmp_halo_bottomline[local_ncols * 0 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 0 + jj + (halo_local_ncols*1)]; //speed 4
-    tmp_halo_bottomline[local_ncols * 1 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 1 + jj + (halo_local_ncols*1)]; //speed 7
-    tmp_halo_bottomline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 2 + jj + (halo_local_ncols*1)]; //speed 8
+    tmp_halo_bottomline[local_ncols * 0 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 4 + jj + (halo_local_ncols*1)]; //speed 4
+    tmp_halo_bottomline[local_ncols * 1 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 7 + jj + (halo_local_ncols*1)]; //speed 7
+    tmp_halo_bottomline[local_ncols * 2 + jj] = halo_cells[(local_ncols*(local_nrows+2)) * 8 + jj + (halo_local_ncols*1)]; //speed 8
   }
   // }
 
