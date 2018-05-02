@@ -338,13 +338,13 @@ int main(int argc, char* argv[])
     //halo_temp = swap_ptr;
     ////av_vels[tt] = av_velocity(params, cells, obstacles);
     //av_vels[tt] = av_velocity(params, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
-    av_vels[tt] = timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+    timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
 
-    //av_vels[tt] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
+    av_vels[tt] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs);
 
-    av_vels[tt+1] = timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
+    timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
-    //av_vels[tt+1] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
+    av_vels[tt+1] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -573,7 +573,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
   MPI_Irecv(recvbuftop, 9*halo_local_ncols, MPI_FLOAT, top, 0, MPI_COMM_WORLD, &recv_top_request);
 
   //MIDDLE ROWS
-  #pragma omp target teams distribute parallel for collapse(2) map(to:tot_u,tot_cells)/*map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)])*/ //map(tofrom:halo_temp[0:9*local_ncols*(local_nrows+2)])
+  #pragma omp target teams distribute parallel for collapse(2) //map(to:tot_u,tot_cells)/*map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)])*/ //map(tofrom:halo_temp[0:9*local_ncols*(local_nrows+2)])
   for (int jj = 1; jj < local_nrows-1; jj++){
   //#pragma omp simd
     for (int ii = 0; ii < local_ncols; ii++){
@@ -626,10 +626,10 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
                        + local8))
                    / local_density;
 
-      /* accumulate the norm of x- and y- velocity components */
-      tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
-      /* increase counter of inspected cells */
-      ++tot_cells;
+      ///* accumulate the norm of x- and y- velocity components */
+      //tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
+      ///* increase counter of inspected cells */
+      //++tot_cells;
 
       /* velocity squared */
       float u_sq = u_x * u_x + u_y * u_y;
@@ -752,10 +752,10 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
                      + local8))
                  / local_density;
     
-    /* accumulate the norm of x- and y- velocity components */
-    tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
-    /* increase counter of inspected cells */
-    ++tot_cells;
+    ///* accumulate the norm of x- and y- velocity components */
+    //tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
+    ///* increase counter of inspected cells */
+    //++tot_cells;
 
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
@@ -832,7 +832,7 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
 
   jj = local_nrows-1;
   //#pragma omp simd
-  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:9*local_ncols]) map(from:tot_u,tot_cells) reduction(+:tot_u,tot_cells)
+  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:9*local_ncols]) //map(from:tot_u,tot_cells) reduction(+:tot_u,tot_cells)
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -883,10 +883,10 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
                      + local8))
                  / local_density;
     
-    /* accumulate the norm of x- and y- velocity components */
-    tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
-    /* increase counter of inspected cells */
-    ++tot_cells;
+    ///* accumulate the norm of x- and y- velocity components */
+    //tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
+    ///* increase counter of inspected cells */
+    //++tot_cells;
  
     /* velocity squared */
     float u_sq = u_x * u_x + u_y * u_y;
@@ -952,9 +952,9 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     }
   }
 
-  if(rank == MASTER){
-    return tot_u / (float)tot_cells;
-  }
+  //if(rank == MASTER){
+  //  return tot_u / (float)tot_cells;
+  //}
 
   return EXIT_SUCCESS;
 }
@@ -1378,7 +1378,7 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
   tot_u = 0.f;
 
   /* loop over all non-blocked cells */
-  #pragma omp target teams distribute parallel for collapse(2) reduction(+:tot_u,tot_cells) /*map(to:halo_cells[0:9*local_ncols*(local_nrows+2)])*/ map(tofrom:tot_u,tot_cells)
+  #pragma omp target teams distribute parallel for collapse(2) reduction(+:tot_u,tot_cells) map(tofrom:tot_u,tot_cells)
   for (int jj = 1; jj < local_nrows+1; jj++)
   {
     for (int ii = 0; ii < local_ncols; ii++)
