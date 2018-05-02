@@ -487,7 +487,7 @@ int accelerate_flow(int params_nx, int params_ny, float params_density, float pa
   int h_jj_mult_paramsnx = h_jj * params_nx;
 
   //#pragma omp target teams distribute parallel for //simd
-  #pragma omp target teams distribute parallel for map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)]) //map(tofrom:halo_cells[9*local_ncols*(h_jj):9*local_ncols*(h_jj)+(1*local_ncols)])
+  #pragma omp target teams distribute parallel for //map(tofrom:halo_cells[0:9*local_ncols*(local_nrows+2)]) //map(tofrom:halo_cells[9*local_ncols*(h_jj):9*local_ncols*(h_jj)+(1*local_ncols)])
   for (int ii = 0; ii < params_nx; ii++)
   {
     // if the cell is not occupied and
