@@ -339,10 +339,11 @@ int main(int argc, char* argv[])
 
 
   float* reduction_buffer = malloc(sizeof(float));
-  //#pragma omp target enter data map(alloc: reduction_buffer[0:1])
-  //{}
+  #pragma omp target enter data map(alloc: reduction_buffer[0:1], recvbufbottom[0:3*local_ncols], recvbuftop[0:3*local_ncols])
+  {}
 
-  #pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows]) map(alloc: reduction_buffer[0:1])
+  #pragma omp target enter data map(to: halo_cells[0:9*halo_local_ncols*halo_local_nrows], halo_temp[0:9*halo_local_ncols*halo_local_nrows]) //map(alloc: reduction_buffer[0:1])
+  {}
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -356,12 +357,31 @@ int main(int argc, char* argv[])
     //{}
 
     timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_cells, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_temp, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline);
+   
+    //reduction_buffer[0] = 0.0f;
+    //#pragma omp target update to(reduction_buffer[0:1])
+    //{}
 
-    av_vels[tt] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs, total_cells, reduction_buffer);
+    av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs, total_cells, reduction_buffer);
+
+    //#pragma omp target update from(reduction_buffer[0:1])
+    //{}
+
+    av_vels[tt] = reduction_buffer[0]/total_cells;
 
     timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
-    av_vels[tt+1] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs, total_cells, reduction_buffer);
+    //reduction_buffer[0] = 0.0f;
+    //#pragma omp target update to(reduction_buffer[0:1])
+    //{}
+
+    av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs, total_cells, reduction_buffer);
+    
+    //#pragma omp target update from(reduction_buffer[0:1])
+    //{}
+
+    av_vels[tt+1] = reduction_buffer[0]/total_cells;
+
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -721,9 +741,12 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
   // }
   //}
 
+  #pragma omp target update to(recvbufbottom[0:3*local_ncols])
+  {}
+
   int jj = 0;
   //#pragma omp simd
-  #pragma omp target teams distribute parallel for map(tofrom:recvbufbottom[0:3*local_ncols])
+  #pragma omp target teams distribute parallel for //map(tofrom:recvbufbottom[0:3*local_ncols])
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -838,7 +861,10 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     recvbufbottom[local_ncols * 1 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 7 + ii + (jj+1)*params_nx]; //speed 7
     recvbufbottom[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 8 + ii + (jj+1)*params_nx]; //speed 8
   } //Retrieve recvbufbottom from GPU here
-  // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
+  
+  #pragma omp target update from(recvbufbottom[0:3*local_ncols])
+  {}
+// for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_bottomline for next round
   for(int jj = 0; jj < halo_local_ncols; jj++){
     tmp_halo_bottomline[local_ncols * 0 + jj] = recvbufbottom[local_ncols * 0 + jj]; //speed 4
     tmp_halo_bottomline[local_ncols * 1 + jj] = recvbufbottom[local_ncols * 1 + jj]; //speed 7
@@ -854,9 +880,12 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
   //  }
   //}
 
+  #pragma omp target update to(recvbuftop[0:3*local_ncols])
+  {}
+
   jj = local_nrows-1;
   //#pragma omp simd
-  #pragma omp target teams distribute parallel for map(tofrom:recvbuftop[0:3*local_ncols]) //map(from:tot_u,tot_cells) reduction(+:tot_u,tot_cells)
+  #pragma omp target teams distribute parallel for //map(tofrom:recvbuftop[0:3*local_ncols]) //map(from:tot_u,tot_cells) reduction(+:tot_u,tot_cells)
   for (int ii = 0; ii < local_ncols; ii++){
     int y_n = (jj+1) + 1;
     int x_e = (ii + 1) % halo_local_ncols; //((ii+1) + 1);
@@ -970,6 +999,9 @@ float propagate_mid(int params_nx, float params_omega, float* cells, float* tmp_
     recvbuftop[local_ncols * 1 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 5 + ii + (jj+1)*params_nx]; //speed 5
     recvbuftop[local_ncols * 2 + ii] = halo_temp[(local_ncols*(local_nrows+2)) * 6 + ii + (jj+1)*params_nx]; //speed 6
   }//Retrieve recvbuftop from GPU here
+
+  #pragma omp target update from(recvbuftop[0:3*local_ncols])
+  {}
   // for(int speed = 0; speed < NSPEEDS; speed++){ //update tmp_halo_topline for next round
   for(int jj = 0; jj < halo_local_ncols; jj++){
     tmp_halo_topline[local_ncols * 0 + jj] = recvbuftop[local_ncols * 0 + jj]; //speed 2
@@ -1408,7 +1440,7 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
   {}
 
   /* loop over all non-blocked cells */
-  #pragma omp target teams distribute parallel for collapse(2) reduction(+ : reduction_buffer[0]) //reduction(+:tot_u,tot_cells) map(from:tot_u,tot_cells)
+  #pragma omp target teams distribute parallel for collapse(2) reduction(+ : reduction_buffer[0]) //map(tofrom:reduction_buffer[0:1])//reduction(+:tot_u,tot_cells) map(from:tot_u,tot_cells)
   for (int jj = 1; jj < local_nrows+1; jj++)
   {
     for (int ii = 0; ii < local_ncols; ii++)
@@ -1449,6 +1481,8 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
       }
     }
   }
+  #pragma omp target update from(reduction_buffer[0:1])
+  {}
 
   /*if(rank == MASTER){
     for(int source = 1; source < size; source++){
@@ -1470,9 +1504,10 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
   //MPI_Reduce(&tot_u, &global_tot_u, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
   //MPI_Reduce(&tot_cells, &global_tot_cells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-  if(rank == MASTER){
-    return tot_u / (float)total_cells;
-  }
+  //if(rank == MASTER){
+    //return tot_u / (float)total_cells;
+  //  return reduction_buffer[0] / (float)total_cells;
+  //}
 
  return 0;
 
