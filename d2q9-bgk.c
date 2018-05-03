@@ -364,12 +364,17 @@ int main(int argc, char* argv[])
     //#pragma omp target update to(reduction_buffer[0:1])
     //{}
 
-    av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs, total_cells, reduction_buffer);
+    av_vels[tt] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_temp, rank, size, status, halo_obs, total_cells, reduction_buffer);
+
+    //float global_tot_u;
+    //MPI_Reduce(reduction_buffer, &global_tot_u, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     //#pragma omp target update from(reduction_buffer[0:1])
     //{}
-
-    av_vels[tt] = reduction_buffer[0]/total_cells;
+    
+    //if(rank == MASTER){
+    //av_vels[tt] = global_tot_u/(float)total_cells;
+    //}
 
     printf("Iteration %d: av_vels from rank %d: %f\n",tt,rank,av_vels[tt]);
 
@@ -379,14 +384,16 @@ int main(int argc, char* argv[])
     //#pragma omp target update to(reduction_buffer[0:1])
     //{}
 
-    av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs, total_cells, reduction_buffer);
-    
+    av_vels[tt+1] = av_velocity(params_nx, cells, obstacles, local_nrows, local_ncols, halo_cells, rank, size, status, halo_obs, total_cells, reduction_buffer);
+    //MPI_Reduce(reduction_buffer, &global_tot_u, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD); 
     //#pragma omp target update from(reduction_buffer[0:1])
     //{}
+   
+    //if(rank == MASTER){
+    //av_vels[tt+1] = global_tot_u/(float)total_cells;
+    //}
 
-    av_vels[tt+1] = reduction_buffer[0]/total_cells;
-
-    printf("Iteration %d: av_vels from rank %d: %f\n",tt,rank,av_vels[tt+1]);
+    printf("Iteration %d: av_vels from rank %d: %f\n",tt+1,rank,av_vels[tt+1]);
 
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -1489,31 +1496,16 @@ float av_velocity(int params_nx, float* cells, int* obstacles, int local_nrows, 
   }
   #pragma omp target update from(reduction_buffer[0:1])
   {}
-
-  /*if(rank == MASTER){
-    for(int source = 1; source < size; source++){
-      MPI_Recv(&recv_tot_u, 1, MPI_FLOAT, source, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(&recv_tot_cells, 1, MPI_INT, source, 0, MPI_COMM_WORLD, &status);
-      tot_u += recv_tot_u;
-      tot_cells += recv_tot_cells;
-    }
-    return tot_u / (float)tot_cells;
-  } else {
-    MPI_Send(&tot_u, 1, MPI_FLOAT, MASTER, 0, MPI_COMM_WORLD);
-    MPI_Send(&tot_cells, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
-  }*/
-
-  //int global_tot_cells;
-  //float global_tot_u;
+  float global_tot_u;
 
   //// Reduce all of the local sums into the global sum
-  //MPI_Reduce(&tot_u, &global_tot_u, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&reduction_buffer[0], &global_tot_u, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
   //MPI_Reduce(&tot_cells, &global_tot_cells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-  //if(rank == MASTER){
+  if(rank == MASTER){
     //return tot_u / (float)total_cells;
-  //  return reduction_buffer[0] / (float)total_cells;
-  //}
+    return global_tot_u / (float)total_cells;
+  }
 
  return 0;
 
