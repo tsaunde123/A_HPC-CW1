@@ -21,7 +21,7 @@ echo Number of nodes: $SLURM_NNODES
 echo CPUs per node: $SLURM_JOB_CPUS_PER_NODE
 
 #! Run the parallel MPI executable (nodes*ppn)
-#mpirun ./d2q9-bgk input_128x128.params obstacles_128x128.dat
-mpirun -np 1 -env CUDA_VISIBLE_DEVICES 0 nvprof ./d2q9-bgk input_128x128.params obstacles_128x128.dat : -np 1 -env CUDA_VISIBLE_DEVICES 1 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun ./d2q9-bgk input_256x256.params obstacles_256x256.dat
+mpirun -np 1 -env CUDA_VISIBLE_DEVICES 0 nvprof ./d2q9-bgk input_256x256.params obstacles_256x256.dat : -np 1 -env CUDA_VISIBLE_DEVICES 1 ./d2q9-bgk input_256x256.params obstacles_256x256.dat
 #nvprof --print-gpu-trace ./d2q9-bgk
 #--print-api-trace

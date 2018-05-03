@@ -371,7 +371,7 @@ int main(int argc, char* argv[])
 
     av_vels[tt] = reduction_buffer[0]/total_cells;
 
-    printf("av_vels from rank %d: %f\n", rank,av_vels[tt]);
+    printf("Iteration %d: av_vels from rank %d: %f\n",tt,rank,av_vels[tt]);
 
     timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
@@ -386,7 +386,7 @@ int main(int argc, char* argv[])
 
     av_vels[tt+1] = reduction_buffer[0]/total_cells;
 
-    printf("av_vels from rank %d: %f\n", rank,av_vels[tt+1]);
+    printf("Iteration %d: av_vels from rank %d: %f\n",tt,rank,av_vels[tt+1]);
 
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -403,7 +403,7 @@ int main(int argc, char* argv[])
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows]) map(release: reduction_buffer[0:2])
+  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows]) map(release: reduction_buffer[0:1])
   free(reduction_buffer);
 
   //float* swap_ptr = halo_cells;
