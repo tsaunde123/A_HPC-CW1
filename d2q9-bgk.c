@@ -310,9 +310,9 @@ int main(int argc, char* argv[])
   }
 
   int total_cells = 0;
-  for(int jj = 0; jj < params_ny; jj++){
-    for(int ii = 0; ii < params_nx; ii++){
-      if (!(cells[(params_nx*params_ny) * 0 + ii + jj*params_nx] == -1)){
+  for(int jj = 1; jj < local_nrows-1; jj++){
+    for(int ii = 0; ii < local_ncols; ii++){
+      if (!(halo_cells[(local_ncols*(local_nrows+2)) * 0 + ii + jj*params_nx] == -1)){
         ++total_cells;
       }
     }
@@ -337,6 +337,8 @@ int main(int argc, char* argv[])
   }
   // }
 
+  printf("Num rows in rank %d: %d \n", rank,local_nrows);
+  printf("total_cells from rank %d: %d \n", rank,total_cells);
 
   float* reduction_buffer = malloc(sizeof(float));
   #pragma omp target enter data map(alloc: reduction_buffer[0:1], recvbufbottom[0:3*local_ncols], recvbuftop[0:3*local_ncols])
@@ -369,6 +371,8 @@ int main(int argc, char* argv[])
 
     av_vels[tt] = reduction_buffer[0]/total_cells;
 
+    printf("av_vels from rank %d: %f\n", rank,av_vels[tt]);
+
     timestep(params_nx, params_ny, params_density, params_accel, params_omega, cells, tmp_cells, obstacles, halo_temp, halo_obs, local_nrows, local_ncols, size, rank, halo_local_nrows, halo_local_ncols, nlr_nrows, halo_cells, status, top, bottom, request, sendbuftop, sendbufbottom, recvbuftop, recvbufbottom, tmp_halo_topline, tmp_halo_bottomline); //pointer swap by swaping function parameters
 
     //reduction_buffer[0] = 0.0f;
@@ -381,6 +385,8 @@ int main(int argc, char* argv[])
     //{}
 
     av_vels[tt+1] = reduction_buffer[0]/total_cells;
+
+    printf("av_vels from rank %d: %f\n", rank,av_vels[tt+1]);
 
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
@@ -397,7 +403,7 @@ int main(int argc, char* argv[])
   timstr = ru.ru_stime;
   systim = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows]) map(release: reduction_buffer[0:1])
+  #pragma omp target exit data map(from: halo_cells[0:9*halo_local_ncols*halo_local_nrows]) map(release: reduction_buffer[0:2])
   free(reduction_buffer);
 
   //float* swap_ptr = halo_cells;
