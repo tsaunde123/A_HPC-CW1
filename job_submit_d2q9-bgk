@@ -3,7 +3,7 @@
 #SBATCH --job-name d2q9-bgk
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 28
-#SBATCH --time 00:03:00
+#SBATCH --time 00:01:00
 #SBATCH --partition cpu
 #SBATCH --output d2q9-bgk.out
 
@@ -18,4 +18,32 @@ echo Number of nodes: $SLURM_NNODES
 echo CPUs per node: $SLURM_JOB_CPUS_PER_NODE
 
 #! Run the parallel MPI executable (nodes*ppn)
-mpirun ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 1 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 2 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 3 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 4 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 5 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 6 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 7 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 8 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 9 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 10 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 11 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 12 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 13 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 14 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 15 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 16 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 17 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 18 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 19 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 20 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 21 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 22 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 23 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 24 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 25 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 26 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+#mpirun -np 27 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
+mpirun -np 28 ./d2q9-bgk input_128x128.params obstacles_128x128.dat
